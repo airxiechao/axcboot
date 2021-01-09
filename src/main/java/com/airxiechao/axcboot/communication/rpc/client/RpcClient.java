@@ -48,6 +48,7 @@ public class RpcClient {
     protected int reconnectDelaySecs = 5;
     private int callTimeoutSecs = 10;
     private IRpcAuthChecker authChecker;
+    private boolean verboseLog = false;
 
     protected RPC_CLIENT_STATUS status = RPC_CLIENT_STATUS.NOT_STARTED;
 
@@ -371,5 +372,13 @@ public class RpcClient {
 
     public IRpcAuthChecker getAuthChecker(){
         return authChecker;
+    }
+
+    public boolean isVerboseLog() {
+        return verboseLog;
+    }
+
+    public void setVerboseLog(boolean verboseLog) {
+        this.verboseLog = verboseLog;
     }
 }

@@ -102,7 +102,8 @@ public class RpcServerMessageRouter extends ChannelInboundHandlerAdapter {
         ctx.close();
 
         String client = getClientByContext(ctx);
-        logger.error("close rpc-client-[{}] connection by uncaught error", client, cause);
+        logger.error("close rpc-client-[{}] connection by uncaught error", client,
+                this.rpcServer.isVerboseLog() ? cause : null);
     }
 
     /**
@@ -135,7 +136,7 @@ public class RpcServerMessageRouter extends ChannelInboundHandlerAdapter {
      */
     private void handleServiceMessage(ChannelHandlerContext ctx, RpcMessage message){
 
-        if(this.rpcServer.isAccessLogEnabled()){
+        if(this.rpcServer.isVerboseLog()){
             logAccess(ctx, message);
         }
 
