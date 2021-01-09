@@ -135,7 +135,9 @@ public class RpcServerMessageRouter extends ChannelInboundHandlerAdapter {
      */
     private void handleServiceMessage(ChannelHandlerContext ctx, RpcMessage message){
 
-        logAccess(ctx, message);
+        if(this.rpcServer.isAccessLogEnabled()){
+            logAccess(ctx, message);
+        }
 
         IRpcMessageHandler handler = null;
         if(null != message.getType()){

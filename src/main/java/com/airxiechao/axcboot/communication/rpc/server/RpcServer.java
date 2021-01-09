@@ -39,6 +39,7 @@ public class RpcServer {
     private RpcServerMessageRouter router;
     private int callTimeoutSecs = 10;
     private IRpcAuthChecker authChecker;
+    private boolean accessLogEnabled = false;
 
     private RPC_SERVER_STATUS status = RPC_SERVER_STATUS.NOT_STARTED;
 
@@ -322,5 +323,13 @@ public class RpcServer {
 
     public RpcServerMessageRouter getRouter(){
         return this.router;
+    }
+
+    public boolean isAccessLogEnabled() {
+        return accessLogEnabled;
+    }
+
+    public void setAccessLogEnabled(boolean accessLogEnabled) {
+        this.accessLogEnabled = accessLogEnabled;
     }
 }
