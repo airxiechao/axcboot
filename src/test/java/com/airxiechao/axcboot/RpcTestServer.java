@@ -12,7 +12,7 @@ public class RpcTestServer
     public static void main( String[] args )
     {
         RpcServer server = new RpcServer("server1")
-                .config("127.0.0.1", 8888, 2, 16, 10, null);
+                .config("127.0.0.1", 8888, 2, 16, null);
 
 
         server.registerRpcHandler("add", (ctx, payload) -> {
@@ -54,7 +54,7 @@ public class RpcTestServer
 class Client{
     public static void main( String[] args ){
         RpcClient client = new RpcClient("client1")
-                .config("127.0.0.1", 8888, 16, 1, 10,
+                .config("127.0.0.1", 8888, 16, 1,
                         null, null);
 
         client.registerRpcHandler("add2", (ctx, payload) -> {

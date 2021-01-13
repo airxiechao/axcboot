@@ -46,7 +46,6 @@ public class RpcClient {
     protected IRpcEventListener connectListener;
 
     protected int reconnectDelaySecs = 5;
-    private int callTimeoutSecs = 10;
     private IRpcAuthChecker authChecker;
     private boolean verboseLog = false;
 
@@ -70,7 +69,6 @@ public class RpcClient {
             int port,
             int numWorkerThreads,
             int reconnectDelaySecs,
-            int callTimeoutSecs,
             IRpcAuthChecker authChecker,
             IRpcEventListener connectListener
     ){
@@ -79,7 +77,6 @@ public class RpcClient {
         this.numIoThreads = 1;
         this.numWorkerThreads = numWorkerThreads;
         this.reconnectDelaySecs = reconnectDelaySecs;
-        this.callTimeoutSecs = callTimeoutSecs;
         this.authChecker = authChecker;
         this.connectListener = connectListener;
 
@@ -306,10 +303,14 @@ public class RpcClient {
      * @return
      */
     public Response callServer(String type, Map payload){
-        return callServer(type, JSON.toJSONString(payload));
+        return callServer(type, JSON.toJSONString(payload), null);
     }
 
-    private Response callServer(String type, String payload){
+    public Response callServer(String type, Map payload, Integer callTimeoutSecs){
+        return callServer(type, JSON.toJSONString(payload), callTimeoutSecs);
+    }
+
+    private Response callServer(String type, String payload, Integer callTimeoutSecs){
 
         Response resp = new Response();
         if(RPC_CLIENT_STATUS.CONNECTED != getStatus()){
@@ -325,7 +326,12 @@ public class RpcClient {
             String requestId = RequestId.next();
             RpcMessage message = new RpcMessage(requestId, type, payload);
             RpcFuture future = this.router.sendToServer(message);
-            resp = future.get(callTimeoutSecs, TimeUnit.SECONDS);
+            if(null != callTimeoutSecs){
+                resp = future.get(callTimeoutSecs, TimeUnit.SECONDS);
+            }else{
+                resp = future.get();
+            }
+
             return resp;
         }catch (Exception e) {
             throw new RpcException(e);

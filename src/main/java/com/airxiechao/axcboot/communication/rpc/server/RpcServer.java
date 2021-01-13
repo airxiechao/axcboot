@@ -37,7 +37,6 @@ public class RpcServer {
     private Channel serverChannel;
     private Map<String, IRpcMessageHandler> serviceHandlers = new HashMap<>();
     private RpcServerMessageRouter router;
-    private int callTimeoutSecs = 10;
     private IRpcAuthChecker authChecker;
     private boolean verboseLog = false;
 
@@ -52,14 +51,12 @@ public class RpcServer {
             int port,
             int numIoThreads,
             int numWorkerThreads,
-            int callTimeoutSecs,
             IRpcAuthChecker authChecker
     ){
         this.serverIp = ip;
         this.serverPort = port;
         this.numIoThreads = numIoThreads;
         this.numWorkerThreads = numWorkerThreads;
-        this.callTimeoutSecs = callTimeoutSecs;
         this.authChecker = authChecker;
 
         registerHeartbeatHandler();
@@ -241,10 +238,14 @@ public class RpcServer {
      * @return
      */
     public Response callClient(String client, String type, Map payload){
-        return callClient(client, type, JSON.toJSONString(payload));
+        return callClient(client, type, JSON.toJSONString(payload), null);
     }
 
-    private Response callClient(String client, String type, String payload){
+    public Response callClient(String client, String type, Map payload, Integer callTimeoutSecs){
+        return callClient(client, type, JSON.toJSONString(payload), callTimeoutSecs);
+    }
+
+    private Response callClient(String client, String type, String payload, Integer callTimeoutSecs){
 
         Response resp = new Response();
         if(RPC_SERVER_STATUS.STARTED != getStatus()){
@@ -260,7 +261,11 @@ public class RpcServer {
             String requestId = RequestId.next();
             RpcMessage message = new RpcMessage(requestId, type, payload);
             RpcFuture future = this.router.sendToClient(client, message);
-            resp = future.get(callTimeoutSecs, TimeUnit.SECONDS);
+            if(null != callTimeoutSecs){
+                resp = future.get(callTimeoutSecs, TimeUnit.SECONDS);
+            }else{
+                resp = future.get();
+            }
             return resp;
         }catch (Exception e) {
             throw new RpcException(e);
