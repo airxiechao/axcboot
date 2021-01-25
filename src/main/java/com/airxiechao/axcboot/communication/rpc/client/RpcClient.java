@@ -14,10 +14,14 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.*;
+import java.io.File;
 import java.lang.reflect.Method;
 import java.util.Date;
 import java.util.HashMap;
@@ -48,6 +52,7 @@ public class RpcClient {
     protected int reconnectDelaySecs = 5;
     private IRpcAuthChecker authChecker;
     private boolean verboseLog = false;
+    private SslContext sslCtx;
 
     protected RPC_CLIENT_STATUS status = RPC_CLIENT_STATUS.NOT_STARTED;
 
@@ -83,6 +88,34 @@ public class RpcClient {
         return this;
     }
 
+    public RpcClient useSsl(
+            KeyManager keyManager,
+            TrustManager trustManager
+    ) throws SSLException {
+
+        sslCtx = SslContextBuilder.forClient()
+                .keyManager(keyManager)
+                .trustManager(trustManager)
+                .build();
+
+        return this;
+    }
+
+    public RpcClient useSsl(
+            File keyCertChainFile,
+            File keyFile,
+            TrustManager trustManager
+    ) throws SSLException {
+
+        this.sslCtx = SslContextBuilder
+                .forClient()
+                .keyManager(keyCertChainFile, keyFile)
+                .trustManager(trustManager)
+                .build();
+
+        return this;
+    }
+
     /**
      * 启动
      * @return
@@ -106,6 +139,10 @@ public class RpcClient {
             @Override
             protected void initChannel(SocketChannel ch) throws Exception {
                 ChannelPipeline pipe = ch.pipeline();
+
+                if(null != sslCtx) {
+                    pipe.addLast(sslCtx.newHandler(ch.alloc()));
+                }
                 pipe.addLast(new ReadTimeoutHandler(HEARTBEAT_PERIOD_SECS * 2));
                 pipe.addLast(new RpcMessageDecoder());
                 pipe.addLast(encoder);
@@ -384,7 +421,8 @@ public class RpcClient {
         return verboseLog;
     }
 
-    public void setVerboseLog(boolean verboseLog) {
+    public RpcClient setVerboseLog(boolean verboseLog) {
         this.verboseLog = verboseLog;
+        return this;
     }
 }

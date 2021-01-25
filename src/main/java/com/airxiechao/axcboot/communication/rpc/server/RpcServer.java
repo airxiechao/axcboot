@@ -12,10 +12,15 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import io.netty.handler.ssl.ClientAuth;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.*;
+import java.io.File;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -39,6 +44,7 @@ public class RpcServer {
     private RpcServerMessageRouter router;
     private IRpcAuthChecker authChecker;
     private boolean verboseLog = false;
+    private SslContext sslCtx;
 
     private RPC_SERVER_STATUS status = RPC_SERVER_STATUS.NOT_STARTED;
 
@@ -60,6 +66,35 @@ public class RpcServer {
         this.authChecker = authChecker;
 
         registerHeartbeatHandler();
+
+        return this;
+    }
+
+    public RpcServer useSsl(
+            KeyManager keyManager,
+            TrustManager trustManager
+    ) throws SSLException {
+
+        this.sslCtx = SslContextBuilder
+                .forServer(keyManager)
+                .trustManager(trustManager)
+                .clientAuth(ClientAuth.REQUIRE)
+                .build();
+
+        return this;
+    }
+
+    public RpcServer useSsl(
+            File keyCertChainFile,
+            File keyFile,
+            TrustManager trustManager
+    ) throws SSLException {
+
+        this.sslCtx = SslContextBuilder
+                .forServer(keyCertChainFile, keyFile)
+                .trustManager(trustManager)
+                .clientAuth(ClientAuth.REQUIRE)
+                .build();
 
         return this;
     }
@@ -86,6 +121,10 @@ public class RpcServer {
                     @Override
                     protected void initChannel(SocketChannel socketChannel) throws Exception {
                         ChannelPipeline pipe = socketChannel.pipeline();
+
+                        if(null != sslCtx) {
+                            pipe.addLast(sslCtx.newHandler(socketChannel.alloc()));
+                        }
                         pipe.addLast(new ReadTimeoutHandler(RpcContext.HEARTBEAT_PERIOD_SECS * 2));
                         pipe.addLast(new RpcMessageDecoder());
                         pipe.addLast(encoder);
@@ -334,7 +373,8 @@ public class RpcServer {
         return verboseLog;
     }
 
-    public void setVerboseLog(boolean verboseLog) {
+    public RpcServer setVerboseLog(boolean verboseLog) {
         this.verboseLog = verboseLog;
+        return this;
     }
 }
