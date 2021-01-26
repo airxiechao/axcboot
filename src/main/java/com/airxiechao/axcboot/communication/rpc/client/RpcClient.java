@@ -102,6 +102,19 @@ public class RpcClient {
     }
 
     public RpcClient useSsl(
+            KeyManagerFactory keyManagerFactory,
+            TrustManager trustManager
+    ) throws SSLException {
+
+        sslCtx = SslContextBuilder.forClient()
+                .keyManager(keyManagerFactory)
+                .trustManager(trustManager)
+                .build();
+
+        return this;
+    }
+
+    public RpcClient useSsl(
             File keyCertChainFile,
             File keyFile,
             TrustManager trustManager
