@@ -61,13 +61,13 @@ class ReloadableX509TrustManager implements X509TrustManager {
 
     private void reloadTrustManager() throws Exception {
 
-        // load keystore from specified cert store (or default)
+        // load keystore
         KeyStore keyStore = KeyStore.getInstance("JKS");
         try( InputStream keyStoreInputStream = this.keyStoreFs.getFileAsStream(this.keyStoreFileName) ) {
             keyStore.load(keyStoreInputStream, this.keyStorePassword);
         }
 
-        // initialize a new TMF with the ts we just loaded
+        // initialize a new TMF with the keystore we just loaded
         TrustManagerFactory tmf = TrustManagerFactory.getInstance("SunX509");
         tmf.init(keyStore);
 
