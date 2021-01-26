@@ -14,6 +14,7 @@ import io.netty.channel.ChannelInboundHandlerAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLHandshakeException;
 import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.*;
@@ -32,6 +33,7 @@ public class RpcClientMessageRouter extends ChannelInboundHandlerAdapter {
     private Map<String, RpcFuture> pendingRequests = new ConcurrentHashMap<>();
     private RpcClient client;
     private IRpcAuthChecker authChecker;
+    private boolean shouldReconnect = true;
 
     public RpcClientMessageRouter(RpcClient client){
         this.client = client;
@@ -72,9 +74,11 @@ public class RpcClientMessageRouter extends ChannelInboundHandlerAdapter {
         closeConection();
 
         // 尝试重连
-        ctx.channel().eventLoop().schedule(() -> {
-            client.connect();
-        }, client.getReconnectDelaySecs(), TimeUnit.SECONDS);
+        if(this.shouldReconnect){
+            ctx.channel().eventLoop().schedule(() -> {
+                client.connect();
+            }, client.getReconnectDelaySecs(), TimeUnit.SECONDS);
+        }
     }
 
     @Override
@@ -97,6 +101,10 @@ public class RpcClientMessageRouter extends ChannelInboundHandlerAdapter {
     @Override
     public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
         ctx.close();
+
+        if(cause.getCause() instanceof SSLHandshakeException){
+            this.shouldReconnect = false;
+        }
 
         logger.error("close rpc-client-[{}] to server connection by uncaught error", client.getName(),
                 this.client.isVerboseLog() ? cause : null);
