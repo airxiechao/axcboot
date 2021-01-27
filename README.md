@@ -1,5 +1,5 @@
 # axcboot
-a collection of java back-end components
+a collection of java backend components
 
 ## Maven
 
