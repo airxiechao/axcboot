@@ -17,12 +17,12 @@ public abstract class AbstractStateMachine {
     }
 
     protected abstract void initStm();
-    protected abstract void transferToState(String state);
+    protected abstract void transferToState(String state) throws Exception;
 
-    public synchronized void enterState(String state){
+    public synchronized void enterState(String state) throws Exception{
         if(!checkStateTransfer(this.state, state)){
             logger.error("state machine can not transfer state from [{}] to [{}]", this.state, state);
-            return;
+            throw new Exception("state machine transfer state error");
         }
 
         this.state = state;
