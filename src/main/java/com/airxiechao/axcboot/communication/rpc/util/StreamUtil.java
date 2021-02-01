@@ -9,13 +9,9 @@ public class StreamUtil {
 
     /**
      * 读取输入流
-     * @param inputStream
-     * @param bufferSize
-     * @param consumer
-     * @throws Exception
      */
-    public static void readStringInputStream(InputStream inputStream, int bufferSize, Consumer<String> consumer) throws Exception {
-        try(Reader logReader = new InputStreamReader(inputStream, "UTF-8")){
+    public static void readStringInputStream(InputStream inputStream, int bufferSize, String charsetName, Consumer<String> consumer) throws Exception {
+        try(Reader logReader = new InputStreamReader(inputStream, charsetName)){
             char[] buffer = new char[bufferSize];
             while(true){
                 int num = logReader.read(buffer);
