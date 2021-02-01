@@ -288,9 +288,9 @@ public class RpcClient {
         t.start();
     }
 
-    public void runConnectListener(){
+    public void runConnectListener(ChannelHandlerContext ctx){
         if(null != this.connectListener){
-            Thread t = new Thread(()-> this.connectListener.run());
+            Thread t = new Thread(()-> this.connectListener.handle(ctx));
             t.setDaemon(true);
             t.start();
         }
@@ -464,7 +464,7 @@ public class RpcClient {
             updateRpcContext(ctx, new Date());
 
             heartbeatOnce();
-            runConnectListener();
+            runConnectListener(ctx);
         }
 
         @Override

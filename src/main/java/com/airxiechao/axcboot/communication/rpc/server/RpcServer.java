@@ -54,6 +54,7 @@ public class RpcServer {
     private IRpcAuthChecker authChecker;
     private boolean verboseLog = false;
     private SslContext sslCtx;
+    protected IRpcEventListener connectListener;
 
     private RPC_SERVER_STATUS status = RPC_SERVER_STATUS.NOT_STARTED;
 
@@ -66,13 +67,15 @@ public class RpcServer {
             int port,
             int numIoThreads,
             int numWorkerThreads,
-            IRpcAuthChecker authChecker
+            IRpcAuthChecker authChecker,
+            IRpcEventListener connectListener
     ){
         this.serverIp = ip;
         this.serverPort = port;
         this.numIoThreads = numIoThreads;
         this.numWorkerThreads = numWorkerThreads;
         this.authChecker = authChecker;
+        this.connectListener = connectListener;
 
         registerHeartbeatHandler();
 
@@ -425,6 +428,8 @@ public class RpcServer {
 
             logger.info("rpc-client-[{}] active", clientName);
 
+            runConnectListener(ctx);
+
             // 如果已经存在相同名称的其他客户端，则断开连接
             updateOrCloseRpcContext(clientName, ctx);
         }
@@ -464,6 +469,14 @@ public class RpcServer {
 
             String client = getClientByContext(ctx);
             logger.error("close rpc-client-[{}] connection by uncaught error", client, verboseLog ? cause : null);
+        }
+
+        public void runConnectListener(ChannelHandlerContext ctx){
+            if(null != connectListener){
+                Thread t = new Thread(()-> connectListener.handle(ctx));
+                t.setDaemon(true);
+                t.start();
+            }
         }
 
         /**
