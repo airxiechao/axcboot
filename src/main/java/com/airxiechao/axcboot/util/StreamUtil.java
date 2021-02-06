@@ -1,8 +1,9 @@
-package com.airxiechao.axcboot.communication.rpc.util;
+package com.airxiechao.axcboot.util;
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
+import java.io.UnsupportedEncodingException;
 import java.nio.charset.Charset;
 import java.util.function.Consumer;
 
@@ -26,5 +27,20 @@ public class StreamUtil {
                 consumer.accept(str);
             }
         }
+    }
+
+    /**
+     * 从输入流读取所有字符串
+     * @param inputStream
+     * @return
+     */
+    public static String readString(InputStream inputStream, Charset charset) throws Exception {
+        StringBuilder sb = new StringBuilder(512);
+        Reader r = new InputStreamReader(inputStream, charset);
+        int c;
+        while ((c = r.read()) != -1) {
+            sb.append((char) c);
+        }
+        return sb.toString();
     }
 }
