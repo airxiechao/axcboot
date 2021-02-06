@@ -12,7 +12,13 @@ public class LocalFs implements IFs {
     private String dir;
 
     public LocalFs(String dir){
-        FileUtil.mkDirs(dir);
+        this.dir = dir;
+    }
+
+    public LocalFs(String dir, boolean mkdir){
+        if(mkdir){
+            FileUtil.mkDirs(dir);
+        }
 
         this.dir = dir;
     }
