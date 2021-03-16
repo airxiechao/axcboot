@@ -46,6 +46,7 @@ public class RestServer {
     private static final Logger logger = LoggerFactory.getLogger(RestServer.class);
     private static final Logger accessLogger = LoggerFactory.getLogger("access");
 
+    protected String name;
     protected String ip;
     protected int port;
     protected String basePath;
@@ -54,7 +55,11 @@ public class RestServer {
     protected RoutingHandler router = routing();
     protected PathHandler pather = path();
 
-    public RestServer(String ip, int port, String basePath, Consumer<Undertow.Builder> option, AuthRoleChecker authRoleChecker){
+    public RestServer(String name){
+        this.name = name;
+    }
+
+    public RestServer config(String ip, int port, String basePath, Consumer<Undertow.Builder> option, AuthRoleChecker authRoleChecker){
         this.ip = ip;
         this.port = port;
         this.authRoleChecker = authRoleChecker;
@@ -84,14 +89,18 @@ public class RestServer {
         }
 
         this.server = builder.build();
+
+        return this;
     }
 
     public void start(){
         server.start();
+        logger.info("rest-server-[{}] has started at [{}:{}]", this.name, this.ip, this.port);
     }
 
     public void stop(){
         server.stop();
+        logger.info("rest-server-[{}] has stopped", this.name);
     }
 
     public RestServer registerStatic(String urlPath, String resourcePath,

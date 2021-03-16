@@ -11,7 +11,8 @@ import io.undertow.server.HttpServerExchange;
 public class RestTestServer {
 
     public static void main(String[] args){
-        RestServer restServer = new RestServer("0.0.0.0", 80, null, null,
+        RestServer restServer = new RestServer("test");
+        restServer.config("0.0.0.0", 80, null, null,
             (exchange, principal, roles) -> {
                 return false;
             });
