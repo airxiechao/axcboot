@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.net.URLEncoder;
@@ -229,7 +230,9 @@ public class RestServer {
 
                     Object invokeObj = null;
                     if(!Modifier.isStatic(method.getModifiers())){
-                        invokeObj = method.getDeclaringClass().getDeclaredConstructor().newInstance();
+                        Constructor constructor = method.getDeclaringClass().getDeclaredConstructor();
+                        constructor.setAccessible(true);
+                        invokeObj = constructor.newInstance();
                     }
 
                     if(queryPath.endsWith(".bin")){
