@@ -201,7 +201,7 @@ public class RestUtil {
             path = delete.value();
         }
 
-        return "/rest/"+path;
+        return "/api/"+path;
     }
 
     public static String getRemoteIp(HttpServerExchange exchange){

@@ -10,6 +10,7 @@ import com.airxiechao.axcboot.communication.rest.security.*;
 import com.airxiechao.axcboot.communication.rest.util.RestUtil;
 import com.airxiechao.axcboot.communication.websocket.annotation.Endpoint;
 import com.airxiechao.axcboot.communication.websocket.common.AbsWsListener;
+import com.airxiechao.axcboot.util.AnnotationUtil;
 import com.airxiechao.axcboot.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import io.undertow.Undertow;
@@ -32,6 +33,7 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.URLEncoder;
 import java.nio.file.Path;
 import java.util.*;
@@ -78,7 +80,7 @@ public class RestServer {
             this.basePath = basePath;
         }
 
-        this.pather.addPrefixPath(this.basePath + "/rest", new EagerFormParsingHandler(router));
+        this.pather.addPrefixPath(this.basePath + "/api", new EagerFormParsingHandler(router));
 
         Undertow.Builder builder = Undertow.builder()
                 .addHttpListener(this.port, this.ip)
@@ -176,19 +178,19 @@ public class RestServer {
             method.setAccessible(true);
             HttpHandler httpHandler = getMethodHandler(method);
 
-            Get get = method.getAnnotation(Get.class);
+            Get get = AnnotationUtil.getMethodAnnotation(method, Get.class);
             if(null != get){
                 String path = get.value();
                 router.get(path, httpHandler);
             }
 
-            Post post = method.getAnnotation(Post.class);
+            Post post = AnnotationUtil.getMethodAnnotation(method, Post.class);
             if(null != post){
                 String path = post.value();
                 router.post(path, httpHandler);
             }
 
-            Delete delete = method.getAnnotation(Delete.class);
+            Delete delete = AnnotationUtil.getMethodAnnotation(method, Delete.class);
             if(null != delete){
                 String path = delete.value();
                 router.delete(path, httpHandler);
@@ -224,22 +226,27 @@ public class RestServer {
 
                     int methodParamCount = method.getParameterCount();
                     String queryPath = httpServerExchange.getRequestPath();
+
+                    Object invokeObj = null;
+                    if(!Modifier.isStatic(method.getModifiers())){
+                        invokeObj = method.getDeclaringClass().getDeclaredConstructor().newInstance();
+                    }
+
                     if(queryPath.endsWith(".bin")){
                         httpServerExchange.startBlocking();
                         if(1 == methodParamCount){
-                            method.invoke(null, httpServerExchange);
+                            method.invoke(invokeObj, httpServerExchange);
                         }else if(2 == methodParamCount){
-                            method.invoke(null, httpServerExchange, pinStore);
+                            method.invoke(invokeObj, httpServerExchange, pinStore);
                         }else{
                             throw new Exception("rest method parameter count error");
                         }
-
                     }else{
                         Object ret;
                         if(1 == methodParamCount){
-                            ret = method.invoke(null, httpServerExchange);
+                            ret = method.invoke(invokeObj, httpServerExchange);
                         }else if(2 == methodParamCount){
-                            ret = method.invoke(null, httpServerExchange, pinStore);
+                            ret = method.invoke(invokeObj, httpServerExchange, pinStore);
                         }else{
                             throw new Exception("rest method parameter count error");
                         }
@@ -309,7 +316,7 @@ public class RestServer {
     }
 
     protected void checkAuth(Method method, HttpServerExchange httpServerExchange) throws AuthException{
-        Auth auth = method.getAnnotation(Auth.class);
+        Auth auth = AnnotationUtil.getMethodAnnotation(method, Auth.class);
         if(null == auth){
             auth = method.getDeclaringClass().getAnnotation(Auth.class);
         }
@@ -345,7 +352,7 @@ public class RestServer {
     }
 
     protected void checkGuard(Method method, HttpServerExchange httpServerExchange) throws Exception{
-        Guard guard = method.getAnnotation(Guard.class);
+        Guard guard = AnnotationUtil.getMethodAnnotation(method, Guard.class);
         if(null == guard){
             guard = method.getDeclaringClass().getAnnotation(Guard.class);
         }
@@ -380,7 +387,7 @@ public class RestServer {
     }
 
     protected void checkParameter(Method method, HttpServerExchange httpServerExchange) throws Exception {
-        Annotation[] methodAnnos = method.getAnnotations();
+        Annotation[] methodAnnos = AnnotationUtil.getMethodAnnotations(method);
         List<Param> params = new ArrayList<>();
         for(Annotation anno : methodAnnos){
             if(anno instanceof Params){
@@ -427,7 +434,7 @@ public class RestServer {
     }
 
     protected void handleAspectBeforeInvoke(Method method, HttpServerExchange exchange, Map pinStore) throws Exception{
-        Annotation[] methodAnnos = method.getAnnotations();
+        Annotation[] methodAnnos = AnnotationUtil.getMethodAnnotations(method);
         List<Pin> pins = new ArrayList<>();
         for(Annotation anno : methodAnnos){
             if(anno instanceof Pins){
@@ -448,7 +455,7 @@ public class RestServer {
     }
 
     protected void handleAspectAfterInvoke(Method method, HttpServerExchange exchange, Map pinStore) {
-        Annotation[] methodAnnos = method.getAnnotations();
+        Annotation[] methodAnnos = AnnotationUtil.getMethodAnnotations(method);
         List<Pin> pins = new ArrayList<>();
         for(Annotation anno : methodAnnos){
             if(anno instanceof Pins){
@@ -514,7 +521,7 @@ public class RestServer {
                 String path = httpServerExchange.getRequestPath();
                 String remoteIp = RestUtil.getRemoteIp(httpServerExchange);
 
-                if(path.startsWith(basePath + "/rest/")){
+                if(path.startsWith(basePath + "/api/")){
                     accessLogger.info(remoteIp + " => " + path);
                 }
 

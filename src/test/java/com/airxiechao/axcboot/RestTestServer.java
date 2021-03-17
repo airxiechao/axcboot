@@ -29,7 +29,7 @@ public class RestTestServer {
 class RestHandler {
 
     /**
-     * 加法：/rest/add?a=1&b=2
+     * 加法：/api/add?a=1&b=2
      * @param exchange
      * @return
      */
