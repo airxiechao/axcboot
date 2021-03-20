@@ -5,7 +5,6 @@ import com.airxiechao.axcboot.storage.fs.IFs;
 import com.airxiechao.axcboot.storage.fs.JavaResourceFs;
 import com.airxiechao.axcboot.util.StringUtil;
 import com.alibaba.fastjson.JSON;
-import org.apache.ibatis.io.Resources;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.SqlSessionFactoryBuilder;
@@ -18,7 +17,6 @@ import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -41,7 +39,7 @@ public class DbManager {
     public DbManager(IFs configFs, String configFilePath) {
         List<String> envIds;
         try (InputStream inputStream = configFs.getFileAsStream(configFilePath)){
-            envIds = parseEnviromentIds(inputStream);
+            envIds = parseEnvironmentIds(inputStream);
         }catch (Exception e){
             logger.error("db manager parse environment ids error.", e);
             return;
@@ -69,7 +67,7 @@ public class DbManager {
         }
     }
 
-    private List<String> parseEnviromentIds(InputStream inputStream) throws Exception {
+    private List<String> parseEnvironmentIds(InputStream inputStream) throws Exception {
         List<String> envIds = new ArrayList<>();
 
         DocumentBuilderFactory xmlFactory = DocumentBuilderFactory.newInstance();
