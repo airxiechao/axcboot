@@ -1,6 +1,8 @@
 package com.airxiechao.axcboot.storage.db;
 
 import com.airxiechao.axcboot.storage.annotation.Table;
+import com.airxiechao.axcboot.storage.fs.IFs;
+import com.airxiechao.axcboot.storage.fs.JavaResourceFs;
 import com.airxiechao.axcboot.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import org.apache.ibatis.io.Resources;
@@ -16,6 +18,7 @@ import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
 import java.io.InputStream;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -27,28 +30,25 @@ public class DbManager {
 
     private static final Logger logger = LoggerFactory.getLogger(DbManager.class);
 
-    private static DbManager ourInstance = new DbManager();
-
-    public static DbManager getInstance() {
-        return ourInstance;
-    }
-
-
     private static final String DEFAULT_DATASOURCE = "default";
 
     private Map<String, SqlSessionFactory> sqlSessionFactoryMap = new HashMap<>();
 
-    private DbManager() {
+    public DbManager(){
+        this(new JavaResourceFs(), "mybatis.xml");
+    }
+
+    public DbManager(IFs configFs, String configFilePath) {
         List<String> envIds;
-        try (InputStream inputStream = Resources.getResourceAsStream("mybatis.xml")){
+        try (InputStream inputStream = configFs.getFileAsStream(configFilePath)){
             envIds = parseEnviromentIds(inputStream);
         }catch (Exception e){
-            logger.error("db manager parse enviroment ids error.", e);
+            logger.error("db manager parse environment ids error.", e);
             return;
         }
 
         // default datasource
-        try (InputStream inputStream = Resources.getResourceAsStream("mybatis.xml")){
+        try (InputStream inputStream = configFs.getFileAsStream(configFilePath)){
             SqlSessionFactory defaultSqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
             defaultSqlSessionFactory.getConfiguration().addMapper(DbMapper.class);
             sqlSessionFactoryMap.put(DEFAULT_DATASOURCE, defaultSqlSessionFactory);
@@ -57,9 +57,9 @@ public class DbManager {
             return;
         }
 
-        // named statsources
+        // named datasource
         for(String envId : envIds){
-            try (InputStream inputStream = Resources.getResourceAsStream("mybatis.xml")){
+            try (InputStream inputStream = configFs.getFileAsStream(configFilePath)){
                 SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream, envId);
                 sqlSessionFactory.getConfiguration().addMapper(DbMapper.class);
                 sqlSessionFactoryMap.put(envId, sqlSessionFactory);
@@ -69,24 +69,20 @@ public class DbManager {
         }
     }
 
-    private List<String> parseEnviromentIds(InputStream inputStream){
+    private List<String> parseEnviromentIds(InputStream inputStream) throws Exception {
         List<String> envIds = new ArrayList<>();
 
-        try{
-            DocumentBuilderFactory xmlFactory = DocumentBuilderFactory.newInstance();
-            DocumentBuilder xmlBuilder = xmlFactory.newDocumentBuilder();
-            Document xml = xmlBuilder.parse(inputStream);
-            NodeList envNodes = xml.getDocumentElement().getElementsByTagName("environment");
-            for(int i = 0; i < envNodes.getLength(); ++i){
-                Node envNode = envNodes.item(i);
-                if(envNode.getNodeType() == Node.ELEMENT_NODE){
-                    Element envElement = (Element)envNode;
-                    String envId = envElement.getAttribute("id");
-                    envIds.add(envId);
-                }
+        DocumentBuilderFactory xmlFactory = DocumentBuilderFactory.newInstance();
+        DocumentBuilder xmlBuilder = xmlFactory.newDocumentBuilder();
+        Document xml = xmlBuilder.parse(inputStream);
+        NodeList envNodes = xml.getDocumentElement().getElementsByTagName("environment");
+        for(int i = 0; i < envNodes.getLength(); ++i){
+            Node envNode = envNodes.item(i);
+            if(envNode.getNodeType() == Node.ELEMENT_NODE){
+                Element envElement = (Element)envNode;
+                String envId = envElement.getAttribute("id");
+                envIds.add(envId);
             }
-        }catch (Exception e){
-            logger.error("parse db enviroment ids error.", e);
         }
 
         return envIds;
@@ -167,7 +163,7 @@ public class DbManager {
             datasource = DEFAULT_DATASOURCE;
         }
 
-        SqlSession session = DbManager.getInstance().openSession(datasource);
+        SqlSession session = openSession(datasource);
         DbMapper mapper = session.getMapper(DbMapper.class);
 
         boolean success = false;

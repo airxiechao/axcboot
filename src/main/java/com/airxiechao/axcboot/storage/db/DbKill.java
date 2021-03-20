@@ -20,15 +20,17 @@ public class DbKill {
      * @return
      */
     public static List<DbProcess> showProcessList(
+            DbManager dbManager,
             boolean full,
             String user,
             String db,
             boolean noSleep
     ){
-        return showProcessList(full, user, db, null, noSleep);
+        return showProcessList(dbManager, full, user, db, null, noSleep);
     }
 
     public static List<DbProcess> showProcessList(
+            DbManager dbManager,
             boolean full,
             String user,
             String db,
@@ -44,7 +46,7 @@ public class DbKill {
 
         String sql = sb.toString();
 
-        List<DbProcess> processList = DbManager.getInstance().selectBySql(sql, DbProcess.class, datasource);
+        List<DbProcess> processList = dbManager.selectBySql(sql, DbProcess.class, datasource);
         processList = processList.stream().filter(dbProcess -> {
             if(null != user && !user.equals(dbProcess.getUser())){
                 return false;
@@ -69,13 +71,13 @@ public class DbKill {
      * @param pid
      * @return
      */
-    public static boolean kill(long pid){
-        return kill(pid, null);
+    public static boolean kill(DbManager dbManager, long pid){
+        return kill(dbManager, pid, null);
     }
 
-    public static boolean kill(long pid, String datasource){
+    public static boolean kill(DbManager dbManager, long pid, String datasource){
         try{
-            DbManager.getInstance().executeBySql("kill " + pid, datasource);
+            dbManager.executeBySql("kill " + pid, datasource);
             logger.info("db killed " + pid);
             return true;
         }catch (Exception e){
@@ -92,16 +94,18 @@ public class DbKill {
      * @param maxSecs
      */
     public static void killStalledProcess(
+            DbManager dbManager,
             boolean full,
             String user,
             String db,
             boolean noSleep,
             int maxSecs
     ){
-        killStalledProcess(full, user, db, null, noSleep, maxSecs);
+        killStalledProcess(dbManager, full, user, db, null, noSleep, maxSecs);
     }
 
     public static void killStalledProcess(
+            DbManager dbManager,
             boolean full,
             String user,
             String db,
@@ -109,10 +113,10 @@ public class DbKill {
             boolean noSleep,
             int maxSecs
     ){
-        List<DbProcess> processes = showProcessList(full, user, db, noSleep);
+        List<DbProcess> processes = showProcessList(dbManager, full, user, db, noSleep);
         for(DbProcess process : processes){
             if(process.getTime() > maxSecs){
-                kill(process.getId(), datasource);
+                kill(dbManager, process.getId(), datasource);
             }
         }
     }

@@ -12,10 +12,12 @@ public abstract class AbsCacheDb<K, T> {
 
     private static final Logger logger = LoggerFactory.getLogger(AbsCacheDb.class);
 
+    protected DbManager dbManager;
     protected Class<T> cls;
     protected Map<K, Optional<T>> cache = new ConcurrentHashMap<>();
 
-    public AbsCacheDb(Class<T> cls){
+    public AbsCacheDb(DbManager dbManager, Class<T> cls){
+        this.dbManager = dbManager;
         this.cls = cls;
     }
 
@@ -46,7 +48,7 @@ public abstract class AbsCacheDb<K, T> {
      * @return
      */
     public boolean insert(T obj){
-        boolean inserted = DbManager.getInstance().insert(obj) > 0;
+        boolean inserted = dbManager.insert(obj) > 0;
         if(inserted){
             cache.put(buildKey(obj), Optional.of(obj));
         }
@@ -60,7 +62,7 @@ public abstract class AbsCacheDb<K, T> {
      * @return
      */
     public boolean update(T obj){
-        boolean updated = DbManager.getInstance().update(obj) > 0;
+        boolean updated = dbManager.update(obj) > 0;
         if(updated){
             cache.put(buildKey(obj), Optional.of(obj));
         }

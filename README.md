@@ -424,8 +424,10 @@ public class DbTest {
         Y y = new Y();
         y.setValue("222");
 
-        DbManager.getInstance().insert(x);
-        DbManager.getInstance().insert(y);
+        DbManager dbManager = new DbManager();
+
+        dbManager.insert(x);
+        dbManager.insert(y);
     }
 
 }

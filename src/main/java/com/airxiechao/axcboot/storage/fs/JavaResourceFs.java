@@ -2,7 +2,6 @@ package com.airxiechao.axcboot.storage.fs;
 
 import java.io.FileNotFoundException;
 import java.io.InputStream;
-import java.net.MalformedURLException;
 import java.net.URL;
 
 public class JavaResourceFs implements IFs {
