@@ -21,7 +21,7 @@ public class RpcTestServer
 
         RpcServer server = new RpcServer("server1")
                 //.setVerboseLog(true)
-                .config("127.0.0.1", 8888, 2, 16, null, null)
+                .config("127.0.0.1", 8888, 2, 16, null, null, null)
                 .useSsl(SslUtil.buildKeyManagerFactory(new LocalFs("d:/test/ssl"), "rpc-server-key.jks", "123456"),
                         SslUtil.buildReloadableTrustManager(new LocalFs("d:/test/ssl"), "rpc-server-trust.jks", "123456"));
 
@@ -71,7 +71,7 @@ class RpcTestClient{
         RpcClient client = new RpcClient("client1")
                 //.setVerboseLog(true)
                 .config("127.0.0.1", 8888, 16, 10,
-                        null, null)
+                        null, null, null)
                 .useSsl(SslUtil.buildKeyManagerFactory(new LocalFs("d:/test/ssl"), "rpc-client-key.jks", "123456"),
                         SslUtil.buildReloadableTrustManager(new LocalFs("d:/test/ssl"), "rpc-client-trust.jks", "123456"));
 

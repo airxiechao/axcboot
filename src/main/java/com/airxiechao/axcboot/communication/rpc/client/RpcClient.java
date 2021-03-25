@@ -53,6 +53,7 @@ public class RpcClient {
     protected Map<String, IRpcMessageHandler> serviceHandlers = new HashMap<>();
     protected RpcClientMessageRouter router;
     protected IRpcEventListener connectListener;
+    protected IRpcClientListener disconnectListener;
 
     protected int reconnectDelaySecs = 5;
     private IRpcAuthChecker authChecker;
@@ -80,7 +81,8 @@ public class RpcClient {
             int numWorkerThreads,
             int reconnectDelaySecs,
             IRpcAuthChecker authChecker,
-            IRpcEventListener connectListener
+            IRpcEventListener connectListener,
+            IRpcClientListener disconnectListener
     ){
         this.serverIp = ip;
         this.serverPort = port;
@@ -89,6 +91,7 @@ public class RpcClient {
         this.reconnectDelaySecs = reconnectDelaySecs;
         this.authChecker = authChecker;
         this.connectListener = connectListener;
+        this.disconnectListener = disconnectListener;
 
         return this;
     }
@@ -296,6 +299,14 @@ public class RpcClient {
         }
     }
 
+    public void runDisconnectListener(ChannelHandlerContext ctx, String client){
+        if(null != this.disconnectListener){
+            Thread t = new Thread(()-> this.disconnectListener.handle(ctx, client));
+            t.setDaemon(true);
+            t.start();
+        }
+    }
+
     /**
      * 注册rpc请求处理器
      * @param type
@@ -470,6 +481,8 @@ public class RpcClient {
         @Override
         public void channelInactive(ChannelHandlerContext ctx) throws Exception {
             closeConection();
+
+            runDisconnectListener(ctx, null);
 
             // 尝试重连
             if(this.shouldReconnect){

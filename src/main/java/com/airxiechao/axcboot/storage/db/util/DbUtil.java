@@ -18,7 +18,7 @@ public class DbUtil {
 
     public static String field(Class<?> tClass, String fieldName) {
         try {
-            return field(tClass.getField(fieldName));
+            return field(tClass.getDeclaredField(fieldName));
         } catch (NoSuchFieldException e) {
             throw new RuntimeException(e);
         }

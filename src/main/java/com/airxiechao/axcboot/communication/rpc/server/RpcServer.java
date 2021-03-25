@@ -55,6 +55,7 @@ public class RpcServer {
     private boolean verboseLog = false;
     private SslContext sslCtx;
     protected IRpcEventListener connectListener;
+    protected IRpcClientListener disconnectListener;
 
     private RPC_SERVER_STATUS status = RPC_SERVER_STATUS.NOT_STARTED;
 
@@ -68,7 +69,8 @@ public class RpcServer {
             int numIoThreads,
             int numWorkerThreads,
             IRpcAuthChecker authChecker,
-            IRpcEventListener connectListener
+            IRpcEventListener connectListener,
+            IRpcClientListener disconnectListener
     ){
         this.serverIp = ip;
         this.serverPort = port;
@@ -76,6 +78,7 @@ public class RpcServer {
         this.numWorkerThreads = numWorkerThreads;
         this.authChecker = authChecker;
         this.connectListener = connectListener;
+        this.disconnectListener = disconnectListener;
 
         registerHeartbeatHandler();
 
@@ -444,6 +447,8 @@ public class RpcServer {
             if(null != client){
                 clearClient(client);
             }
+
+            runDisconnectListener(ctx, client);
         }
 
         @Override
@@ -474,6 +479,14 @@ public class RpcServer {
         public void runConnectListener(ChannelHandlerContext ctx){
             if(null != connectListener){
                 Thread t = new Thread(()-> connectListener.handle(ctx));
+                t.setDaemon(true);
+                t.start();
+            }
+        }
+
+        public void runDisconnectListener(ChannelHandlerContext ctx, String client){
+            if(null != disconnectListener){
+                Thread t = new Thread(()-> disconnectListener.handle(ctx, client));
                 t.setDaemon(true);
                 t.start();
             }
