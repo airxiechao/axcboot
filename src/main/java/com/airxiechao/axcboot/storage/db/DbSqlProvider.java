@@ -1,6 +1,7 @@
 package com.airxiechao.axcboot.storage.db;
 
 import com.airxiechao.axcboot.storage.annotation.Table;
+import com.airxiechao.axcboot.storage.db.util.DbUtil;
 import com.airxiechao.axcboot.util.StringUtil;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.jdbc.SQL;
@@ -20,8 +21,7 @@ public class DbSqlProvider {
     }
 
     public <T> String selectById(@Param("id") long id, Class<T> tClass){
-        Table table = tClass.getAnnotation(Table.class);
-        String tableName = table.value();
+        String tableName = DbUtil.table(tClass);
 
         String sql = new SQL()
                 .SELECT("*")
@@ -33,8 +33,7 @@ public class DbSqlProvider {
     }
 
     public <T> String deleteById(@Param("id") long id, Class<T> tClass){
-        Table table = tClass.getAnnotation(Table.class);
-        String tableName = table.value();
+        String tableName = DbUtil.table(tClass);
 
         String sql = new SQL()
                 .DELETE_FROM(tableName)
@@ -46,8 +45,7 @@ public class DbSqlProvider {
 
 
     public String update(Object object){
-        Table table = object.getClass().getAnnotation(Table.class);
-        String tableName = table.value();
+        String tableName = DbUtil.table(object.getClass());
 
         SQL sql = new SQL();
         sql.UPDATE(tableName);
@@ -56,7 +54,7 @@ public class DbSqlProvider {
                 continue;
             }
 
-            sql.SET("`"+StringUtil.camelCaseToUnderscore(field.getName()) + "` = #{"+field.getName()+"}");
+            sql.SET("`"+DbUtil.field(field) + "` = #{"+field.getName()+"}");
         }
         sql.WHERE("id = #{id}");
 
@@ -64,8 +62,7 @@ public class DbSqlProvider {
     }
 
     public String insert(Object object){
-        Table table = object.getClass().getAnnotation(Table.class);
-        String tableName = table.value();
+        String tableName = DbUtil.table(object.getClass());
 
         SQL sql = new SQL();
         sql.INSERT_INTO(tableName);
@@ -74,15 +71,14 @@ public class DbSqlProvider {
                 continue;
             }
 
-            sql.VALUES("`"+StringUtil.camelCaseToUnderscore(field.getName())+"`","#{"+field.getName()+"}");
+            sql.VALUES("`"+DbUtil.field(field)+"`","#{"+field.getName()+"}");
         }
 
         return sql.toString();
     }
 
     public String insertWithId(Object object){
-        Table table = object.getClass().getAnnotation(Table.class);
-        String tableName = table.value();
+        String tableName = DbUtil.table(object.getClass());
 
         SQL sql = new SQL();
         sql.INSERT_INTO(tableName);
@@ -91,7 +87,7 @@ public class DbSqlProvider {
                 continue;
             }
 
-            sql.VALUES("`"+StringUtil.camelCaseToUnderscore(field.getName())+"`","#{"+field.getName()+"}");
+            sql.VALUES("`"+DbUtil.field(field)+"`","#{"+field.getName()+"}");
         }
 
         return sql.toString();
@@ -100,8 +96,7 @@ public class DbSqlProvider {
     public String insertBatch(@Param("list") List<Object> list){
         Object object = list.get(0);
 
-        Table table = object.getClass().getAnnotation(Table.class);
-        String tableName = table.value();
+        String tableName = DbUtil.table(object.getClass());
 
         Map<String, String> cols = new HashMap<>();
         for(Field field : object.getClass().getDeclaredFields()){
@@ -109,7 +104,7 @@ public class DbSqlProvider {
                 continue;
             }
 
-            cols.put("`"+StringUtil.camelCaseToUnderscore(field.getName())+"`", "#{element."+field.getName()+"}");
+            cols.put("`"+DbUtil.field(field)+"`", "#{element."+field.getName()+"}");
         }
         String colStr = String.join(",", cols.keySet());
         String valStr = String.join(",", cols.values());
@@ -127,8 +122,7 @@ public class DbSqlProvider {
     }
 
     public String insertOrUpdate(Object object){
-        Table table = object.getClass().getAnnotation(Table.class);
-        String tableName = table.value();
+        String tableName = DbUtil.table(object.getClass());
 
         SQL sql = new SQL();
         sql.INSERT_INTO(tableName);
@@ -138,9 +132,9 @@ public class DbSqlProvider {
                 continue;
             }
 
-            String col = "`"+StringUtil.camelCaseToUnderscore(field.getName())+"`";
+            String col = "`"+DbUtil.field(field)+"`";
             updates.add(col+"=VALUES("+col+")");
-            sql.VALUES("`"+StringUtil.camelCaseToUnderscore(field.getName())+"`","#{"+field.getName()+"}");
+            sql.VALUES("`"+DbUtil.field(field)+"`","#{"+field.getName()+"}");
         }
 
         String updateStr = String.join(",", updates);
@@ -149,8 +143,7 @@ public class DbSqlProvider {
     }
 
     public String insertOrUpdateWithId(Object object){
-        Table table = object.getClass().getAnnotation(Table.class);
-        String tableName = table.value();
+        String tableName = DbUtil.table(object.getClass());
 
         SQL sql = new SQL();
         sql.INSERT_INTO(tableName);
@@ -160,9 +153,9 @@ public class DbSqlProvider {
                 continue;
             }
 
-            String col = "`"+StringUtil.camelCaseToUnderscore(field.getName())+"`";
+            String col = "`"+DbUtil.field(field)+"`";
             updates.add(col+"=VALUES("+col+")");
-            sql.VALUES("`"+StringUtil.camelCaseToUnderscore(field.getName())+"`","#{"+field.getName()+"}");
+            sql.VALUES("`"+DbUtil.field(field)+"`","#{"+field.getName()+"}");
         }
 
         String updateStr = String.join(",", updates);
@@ -173,8 +166,7 @@ public class DbSqlProvider {
     public String insertOrUpdateBatch(@Param("list") List<Object> list){
         Object object = list.get(0);
 
-        Table table = object.getClass().getAnnotation(Table.class);
-        String tableName = table.value();
+        String tableName = DbUtil.table(object.getClass());
 
         Map<String, String> cols = new HashMap<>();
         List<String> updates = new ArrayList<>();
@@ -183,7 +175,7 @@ public class DbSqlProvider {
                 continue;
             }
 
-            String col = "`"+StringUtil.camelCaseToUnderscore(field.getName())+"`";
+            String col = "`"+ DbUtil.field(field)+"`";
             updates.add(col+"=VALUES("+col+")");
             cols.put(col, "#{element."+field.getName()+"}");
         }
@@ -208,8 +200,7 @@ public class DbSqlProvider {
     public String insertOrUpdateWithIdBatch(@Param("list") List<Object> list){
         Object object = list.get(0);
 
-        Table table = object.getClass().getAnnotation(Table.class);
-        String tableName = table.value();
+        String tableName = DbUtil.table(object.getClass());
 
         Map<String, String> cols = new HashMap<>();
         List<String> updates = new ArrayList<>();
@@ -218,7 +209,7 @@ public class DbSqlProvider {
                 continue;
             }
 
-            String col = "`"+ StringUtil.camelCaseToUnderscore(field.getName())+"`";
+            String col = "`"+ DbUtil.field(field)+"`";
             updates.add(col+"=VALUES("+col+")");
             cols.put(col, "#{element."+field.getName()+"}");
         }

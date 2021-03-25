@@ -1,6 +1,7 @@
 package com.airxiechao.axcboot.storage.db;
 
 import com.airxiechao.axcboot.storage.annotation.Table;
+import com.airxiechao.axcboot.storage.db.model.SqlParams;
 import com.airxiechao.axcboot.storage.fs.IFs;
 import com.airxiechao.axcboot.storage.fs.JavaResourceFs;
 import com.airxiechao.axcboot.util.StringUtil;
@@ -218,18 +219,11 @@ public class DbManager {
 
     public <T> List<T> selectBySql(String sql, Map params, Class<T> tClass){
         String datasource = getDatasource(tClass);
-        try(SqlSession session = openSession(datasource)){
-            DbMapper mapper = session.getMapper(DbMapper.class);
-            List<Map> list = mapper.selectBySql(sql, params);
+        return selectBySql(sql, params, tClass, datasource);
+    }
 
-            List<T> ret = new ArrayList<>();
-            for(Map map : list){
-                T t = JSON.parseObject(JSON.toJSONString(map), tClass);
-                ret.add(t);
-            }
-
-            return ret;
-        }
+    public <T> List<T> selectBySql(SqlParams sqlParams, Class<T> tClass){
+        return selectBySql(sqlParams.getSql(), sqlParams.getParams(), tClass);
     }
 
     public <T> List<T> selectBySql(String sql, Map params, Class<T> tClass, String datasource){
@@ -245,6 +239,10 @@ public class DbManager {
 
             return ret;
         }
+    }
+
+    public <T> List<T> selectBySql(SqlParams sqlParams, Class<T> tClass, String datasource){
+        return selectBySql(sqlParams.getSql(), sqlParams.getParams(), tClass, datasource);
     }
 
     /**
@@ -266,6 +264,10 @@ public class DbManager {
         }else{
             return null;
         }
+    }
+
+    public <T> T selectFirstBySql(SqlParams sqlParams, Class<T> tClass) {
+        return selectFirstBySql(sqlParams.getSql(), sqlParams.getParams(), tClass);
     }
 
     /**
@@ -293,6 +295,10 @@ public class DbManager {
         }
     }
 
+    public Long longBySql(SqlParams sqlParams, Class<?> tClass){
+        return longBySql(sqlParams.getSql(), sqlParams.getParams(), tClass);
+    }
+
     /**
      * SQL查询一个DOUBLE
      * @param sql
@@ -316,6 +322,10 @@ public class DbManager {
             DbMapper mapper = session.getMapper(DbMapper.class);
             return mapper.doubleBySql(sql, params);
         }
+    }
+
+    public Double doubleBySql(SqlParams sqlParams, Class<?> tClass){
+        return doubleBySql(sqlParams.getSql(), sqlParams.getParams(), tClass);
     }
 
 
@@ -500,6 +510,10 @@ public class DbManager {
         }
     }
 
+    public int updateBySql(SqlParams sqlParams, Class<?> tClass) {
+        return updateBySql(sqlParams.getSql(), sqlParams.getParams(), tClass);
+    }
+
     /**
      * 删除对象
      * @param id
@@ -528,6 +542,10 @@ public class DbManager {
         return deleteBySql(sql, params, null);
     }
 
+    public int deleteBySql(SqlParams sqlParams){
+        return deleteBySql(sqlParams.getSql(), sqlParams.getParams());
+    }
+
     public int deleteBySql(String sql, Class<?> tClass){
         return deleteBySql(sql, null, tClass);
     }
@@ -539,6 +557,10 @@ public class DbManager {
             int ret = mapper.deleteBySql(sql, params);
             return ret;
         }
+    }
+
+    public int deleteBySql(SqlParams sqlParams, Class<?> tClass){
+        return deleteBySql(sqlParams.getSql(), sqlParams.getParams(), tClass);
     }
 
 
@@ -555,6 +577,10 @@ public class DbManager {
         return executeBySql(sql, params, Object.class);
     }
 
+    public int executeBySql(SqlParams sqlParams){
+        return executeBySql(sqlParams, Object.class);
+    }
+
     public int executeBySql(String sql, String datasource){
         return executeBySql(sql, null, datasource);
     }
@@ -562,6 +588,11 @@ public class DbManager {
     public int executeBySql(String sql, Map params, Class<?> tClass){
         String datasource = getDatasource(tClass);
         return executeBySql(sql, params, datasource);
+    }
+
+    public int executeBySql(SqlParams sqlParams, Class<?> tClass){
+        String datasource = getDatasource(tClass);
+        return executeBySql(sqlParams, datasource);
     }
 
     public int executeBySql(String sql, Map params, String datasource){
@@ -572,5 +603,8 @@ public class DbManager {
         }
     }
 
+    public int executeBySql(SqlParams sqlParams, String datasource){
+        return executeBySql(sqlParams.getSql(), sqlParams.getParams(), datasource);
+    }
 }
 

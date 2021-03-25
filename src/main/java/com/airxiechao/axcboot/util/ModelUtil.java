@@ -1,5 +1,6 @@
 package com.airxiechao.axcboot.util;
 
+import com.airxiechao.axcboot.storage.db.util.DbUtil;
 import com.alibaba.fastjson.JSON;
 import net.sf.cglib.beans.BeanCopier;
 
@@ -35,7 +36,7 @@ public class ModelUtil {
 
             field.setAccessible(true);
 
-            String fieldName = underscoreToCamelCase ? StringUtil.camelCaseToUnderscore(field.getName()) : field.getName();
+            String fieldName = underscoreToCamelCase ? DbUtil.field(field) : field.getName();
             Object fieldValue = map.get(fieldName);
 
             if(field.getType().equals(Integer.class) && fieldValue instanceof String){
@@ -69,7 +70,7 @@ public class ModelUtil {
 
             field.setAccessible(true);
 
-            String fieldName = camelCaseToUnderscore ? StringUtil.camelCaseToUnderscore(field.getName()) : field.getName();
+            String fieldName = camelCaseToUnderscore ? DbUtil.field(field) : field.getName();
             Object fieldValue = field.get(obj);
             map.put(fieldName, fieldValue);
         }
