@@ -36,7 +36,7 @@ public class ModelUtil {
 
             field.setAccessible(true);
 
-            String fieldName = underscoreToCamelCase ? DbUtil.field(field) : field.getName();
+            String fieldName = underscoreToCamelCase ? DbUtil.column(field) : field.getName();
             Object fieldValue = map.get(fieldName);
 
             if(field.getType().equals(Integer.class) && fieldValue instanceof String){
@@ -70,7 +70,7 @@ public class ModelUtil {
 
             field.setAccessible(true);
 
-            String fieldName = camelCaseToUnderscore ? DbUtil.field(field) : field.getName();
+            String fieldName = camelCaseToUnderscore ? DbUtil.column(field) : field.getName();
             Object fieldValue = field.get(obj);
             map.put(fieldName, fieldValue);
         }
