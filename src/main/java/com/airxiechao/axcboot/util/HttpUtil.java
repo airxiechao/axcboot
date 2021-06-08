@@ -1,5 +1,6 @@
 package com.airxiechao.axcboot.util;
 
+import com.alibaba.fastjson.JSON;
 import okhttp3.*;
 
 import java.util.Map;
@@ -9,15 +10,15 @@ public class HttpUtil {
 
 
     private static final MediaType FORM_UTF8_CONTENT_TYPE = MediaType.parse("application/x-www-form-urlencoded; charset=utf-8");
+    private static final MediaType JSON_UTF8_CONTENT_TYPE = MediaType.parse("application/json; charset=utf-8");
 
-    private static final OkHttpClient client = new OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .writeTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(10, TimeUnit.SECONDS)
-            .build();
+    public static String get(String path, Map<String, String> params, int timeout) throws Exception {
 
-
-    public static String get(String path, Map<String, String> params) throws Exception {
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(timeout, TimeUnit.SECONDS)
+                .writeTimeout(timeout, TimeUnit.SECONDS)
+                .readTimeout(timeout, TimeUnit.SECONDS)
+                .build();
 
         HttpUrl.Builder urlBuilder = HttpUrl.parse(path).newBuilder();
         params.forEach((name, value) -> {
@@ -38,7 +39,13 @@ public class HttpUtil {
         }
     }
 
-    public static String post(String path, Map<String, String> params) throws Exception {
+    public static String postForm(String path, Map<String, String> params, int timeout) throws Exception {
+
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(timeout, TimeUnit.SECONDS)
+                .writeTimeout(timeout, TimeUnit.SECONDS)
+                .readTimeout(timeout, TimeUnit.SECONDS)
+                .build();
 
         FormBody.Builder formBuilder = new FormBody.Builder();
         params.forEach((name, value) -> {
@@ -59,6 +66,28 @@ public class HttpUtil {
         }
         String body = sb.toString();
         RequestBody postBody = RequestBody.create(body, FORM_UTF8_CONTENT_TYPE);
+
+        Request request = new Request.Builder()
+                .url(path)
+                .post(postBody)
+                .build();
+
+        try(Response response = client.newCall(request).execute()){
+            String ret = response.body().string();
+            return ret;
+        }
+    }
+
+    public static String postJson(String path, Map<String, String> params, int timeout) throws Exception {
+
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(timeout, TimeUnit.SECONDS)
+                .writeTimeout(timeout, TimeUnit.SECONDS)
+                .readTimeout(timeout, TimeUnit.SECONDS)
+                .build();
+
+        String body = JSON.toJSONString(params);
+        RequestBody postBody = RequestBody.create(body, JSON_UTF8_CONTENT_TYPE);
 
         Request request = new Request.Builder()
                 .url(path)

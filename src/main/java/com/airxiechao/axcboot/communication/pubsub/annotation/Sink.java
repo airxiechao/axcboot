@@ -3,8 +3,8 @@ package com.airxiechao.axcboot.communication.pubsub.annotation;
 import java.lang.annotation.*;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target({ ElementType.TYPE, ElementType.METHOD })
+@Target({ ElementType.TYPE })
 public @interface Sink {
-    String[] events() default  {};
+    String[] events();
     String name() default "";
 }

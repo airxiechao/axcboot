@@ -39,7 +39,7 @@ public class DbManager {
 
     public DbManager(IFs configFs, String configFilePath) {
         List<String> envIds;
-        try (InputStream inputStream = configFs.getFileAsStream(configFilePath)){
+        try (InputStream inputStream = configFs.getInputStream(configFilePath)){
             envIds = parseEnvironmentIds(inputStream);
         }catch (Exception e){
             logger.error("db manager parse environment ids error.", e);
@@ -47,7 +47,7 @@ public class DbManager {
         }
 
         // default datasource
-        try (InputStream inputStream = configFs.getFileAsStream(configFilePath)){
+        try (InputStream inputStream = configFs.getInputStream(configFilePath)){
             SqlSessionFactory defaultSqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
             defaultSqlSessionFactory.getConfiguration().addMapper(DbMapper.class);
             sqlSessionFactoryMap.put(DEFAULT_DATASOURCE, defaultSqlSessionFactory);
@@ -58,7 +58,7 @@ public class DbManager {
 
         // named datasource
         for(String envId : envIds){
-            try (InputStream inputStream = configFs.getFileAsStream(configFilePath)){
+            try (InputStream inputStream = configFs.getInputStream(configFilePath)){
                 SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream, envId);
                 sqlSessionFactory.getConfiguration().addMapper(DbMapper.class);
                 sqlSessionFactoryMap.put(envId, sqlSessionFactory);

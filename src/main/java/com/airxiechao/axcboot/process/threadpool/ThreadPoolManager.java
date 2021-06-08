@@ -18,13 +18,11 @@ public class ThreadPoolManager {
 
     public ThreadPool getThreadPool(String name, int corePoolSize, int maxPoolSize, int maxQueueSize){
         ThreadPool pool = pools.get(name);
-        if(null != pool){
-            return pool;
-        }else{
+        if (null == pool) {
             pool = new ThreadPool(name, corePoolSize, maxPoolSize, maxQueueSize);
             pools.put(name, pool);
-            return pool;
         }
+        return pool;
     }
 
     public void shutdownAll(){

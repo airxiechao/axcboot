@@ -63,7 +63,7 @@ class ReloadableX509TrustManager implements X509TrustManager {
 
         // load keystore
         KeyStore keyStore = KeyStore.getInstance("JKS");
-        try( InputStream keyStoreInputStream = this.keyStoreFs.getFileAsStream(this.keyStoreFileName) ) {
+        try( InputStream keyStoreInputStream = this.keyStoreFs.getInputStream(this.keyStoreFileName) ) {
             keyStore.load(keyStoreInputStream, this.keyStorePassword);
         }
 

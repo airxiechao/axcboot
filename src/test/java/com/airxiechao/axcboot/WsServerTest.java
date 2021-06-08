@@ -1,25 +1,49 @@
 package com.airxiechao.axcboot;
 
 import com.airxiechao.axcboot.communication.common.Response;
-import com.airxiechao.axcboot.communication.websocket.annotation.WsMessageType;
+import com.airxiechao.axcboot.communication.rest.security.AuthPrincipal;
+import com.airxiechao.axcboot.communication.websocket.annotation.WsHandler;
+import com.airxiechao.axcboot.communication.websocket.common.AbstractWsRouterListener;
 import com.airxiechao.axcboot.communication.websocket.server.WsServer;
 import com.alibaba.fastjson.JSON;
 import io.undertow.websockets.core.WebSocketChannel;
+import io.undertow.websockets.spi.WebSocketHttpExchange;
 
 import java.util.Map;
 
 public class WsServerTest {
 
     public static void main(String args[]){
-        WsServer wsServer = new WsServer("0.0.0.0", 80, "/ws");
-        wsServer.registerHandler(ParkWsHandler.class);
+        WsServer wsServer = new WsServer("ws");
+        wsServer.config("0.0.0.0", 80, "/ws", new AbstractWsRouterListener() {
+            @Override
+            public void onConnect(WebSocketHttpExchange exchange, WebSocketChannel channel) {
+
+            }
+
+            @Override
+            public void onClose(WebSocketChannel channel) {
+
+            }
+
+            @Override
+            public void onError(WebSocketChannel channel) {
+
+            }
+
+            @Override
+            public boolean hasRole(WebSocketHttpExchange exchange, AuthPrincipal principal, String[] roles) {
+                return false;
+            }
+        }.registerHandler(ParkWsHandler.class));
+
         wsServer.start();
     }
 }
 
 class ParkWsHandler {
 
-    @WsMessageType("add")
+    @WsHandler("add")
     public static Object add(Object payload, WsServer server, WebSocketChannel channel){
         Map map = JSON.parseObject((String)payload, Map.class);
 

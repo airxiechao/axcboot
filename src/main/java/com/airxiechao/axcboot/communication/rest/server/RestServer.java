@@ -5,14 +5,19 @@ import com.airxiechao.axcboot.communication.common.annotation.Auth;
 import com.airxiechao.axcboot.communication.common.annotation.Param;
 import com.airxiechao.axcboot.communication.common.annotation.Params;
 import com.airxiechao.axcboot.communication.rest.annotation.*;
+import com.airxiechao.axcboot.communication.rest.healthcheck.HealthCheckRestHandler;
 import com.airxiechao.axcboot.communication.rest.aspect.PinHandler;
 import com.airxiechao.axcboot.communication.rest.security.*;
 import com.airxiechao.axcboot.communication.rest.util.RestUtil;
-import com.airxiechao.axcboot.communication.websocket.annotation.Endpoint;
-import com.airxiechao.axcboot.communication.websocket.common.AbsWsListener;
+import com.airxiechao.axcboot.communication.websocket.annotation.WsEndpoint;
+import com.airxiechao.axcboot.communication.websocket.common.AbstractWsListener;
+import com.airxiechao.axcboot.communication.websocket.common.WsCallback;
 import com.airxiechao.axcboot.util.AnnotationUtil;
+import com.airxiechao.axcboot.util.MapBuilder;
 import com.airxiechao.axcboot.util.StringUtil;
 import com.alibaba.fastjson.JSON;
+import com.ecwid.consul.v1.ConsulClient;
+import com.ecwid.consul.v1.agent.model.NewService;
 import io.undertow.Undertow;
 import io.undertow.server.DefaultResponseListener;
 import io.undertow.server.HttpHandler;
@@ -26,11 +31,9 @@ import io.undertow.server.handlers.form.FormDataParser;
 import io.undertow.server.handlers.resource.PathResourceManager;
 import io.undertow.server.handlers.resource.ResourceHandler;
 import io.undertow.util.Headers;
-import io.undertow.websockets.spi.WebSocketHttpExchange;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -60,6 +63,10 @@ public class RestServer {
 
     public RestServer(String name){
         this.name = name;
+    }
+
+    public String getName() {
+        return name;
     }
 
     public RestServer config(String ip, int port, String basePath, Consumer<Undertow.Builder> option, AuthRoleChecker authRoleChecker){
@@ -134,41 +141,53 @@ public class RestServer {
         return this;
     }
 
-    public RestServer registerWs(Class<? extends AbsWsListener> cls){
+    public RestServer registerWs(String endpoint, AbstractWsListener listener) {
+        String urlPath = this.basePath + endpoint;
+        pather.addPrefixPath(urlPath, websocket(new WsCallback(listener)));
+        return this;
+    }
 
-        Endpoint endpoint = cls.getAnnotation(Endpoint.class);
+    public RestServer registerWs(Class<? extends AbstractWsListener> cls){
+
+        WsEndpoint endpoint = cls.getAnnotation(WsEndpoint.class);
         if(null != endpoint){
             String urlPath = this.basePath + endpoint.value();
 
             try {
-                AbsWsListener listener = cls.getConstructor().newInstance();
-                pather.addPrefixPath(urlPath, websocket((exchange, channel) -> {
-
-                    try {
-                        // check auth
-                        checkWsAuth(listener, exchange);
-
-                        // on connect
-                        listener.onConnect(exchange, channel);
-
-                        channel.getReceiveSetter().set(listener);
-                        channel.resumeReceives();
-
-                    } catch (Exception e) {
-                        logger.error("ws connect error: {}", e.getMessage());
-
-                        try {
-                            channel.close();
-                        } catch (Exception ioException) {
-                            logger.error("ws connect close error", e);
-                        }
-                    }
-
-                }));
+                AbstractWsListener listener = cls.getDeclaredConstructor().newInstance();
+                pather.addPrefixPath(urlPath, websocket(new WsCallback(listener)));
             } catch (Exception e) {
-                logger.error("register websocket [{}] error", urlPath);
+                logger.error("register ws [{}] error", urlPath);
             }
         }
+
+        return this;
+    }
+
+    public RestServer registerConsul(int ttl){
+        this.registerHandler(HealthCheckRestHandler.class);
+
+        // register to consul
+        ConsulClient client = new ConsulClient("localhost");
+
+        NewService newService = new NewService();
+        newService.setName(this.name);
+        newService.setPort(this.port);
+        newService.setMeta(new MapBuilder()
+                .put("basePath", this.basePath)
+                .build());
+
+        NewService.Check serviceCheck = new NewService.Check();
+        serviceCheck.setHttp(
+                String.format("http://%s:%d%s%s",
+                        "localhost", this.port, this.basePath,
+                        RestUtil.getMethodPath(HealthCheckRestHandler.getHealthCheckMethod())));
+        serviceCheck.setInterval(ttl + "s");
+        newService.setCheck(serviceCheck);
+
+        client.agentServiceRegister(newService);
+
+        logger.info("register consul service [{}]", this.name);
 
         return this;
     }
@@ -235,25 +254,16 @@ public class RestServer {
                         invokeObj = constructor.newInstance();
                     }
 
-                    if(queryPath.endsWith(".bin")){
-                        httpServerExchange.startBlocking();
-                        if(1 == methodParamCount){
-                            method.invoke(invokeObj, httpServerExchange);
-                        }else if(2 == methodParamCount){
-                            method.invoke(invokeObj, httpServerExchange, pinStore);
-                        }else{
-                            throw new Exception("rest method parameter count error");
-                        }
+                    Object ret;
+                    if(1 == methodParamCount){
+                        ret = method.invoke(invokeObj, httpServerExchange);
+                    }else if(2 == methodParamCount){
+                        ret = method.invoke(invokeObj, httpServerExchange, pinStore);
                     }else{
-                        Object ret;
-                        if(1 == methodParamCount){
-                            ret = method.invoke(invokeObj, httpServerExchange);
-                        }else if(2 == methodParamCount){
-                            ret = method.invoke(invokeObj, httpServerExchange, pinStore);
-                        }else{
-                            throw new Exception("rest method parameter count error");
-                        }
+                        throw new Exception("rest method parameter count error");
+                    }
 
+                    if(null != ret){
                         httpServerExchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                         httpServerExchange.getResponseSender().send(JSON.toJSONString(ret));
                     }
@@ -286,36 +296,6 @@ public class RestServer {
         };
 
         return httpHandler;
-    }
-
-    protected void checkWsAuth(AbsWsListener wsListener, WebSocketHttpExchange exchange) throws AuthException{
-        Auth auth = wsListener.getClass().getAnnotation(Auth.class);
-        if(null != auth){
-            if(auth.ignore()){
-                return;
-            }
-
-            String[] roles = auth.roles();
-            checkWsAuthToken(wsListener, exchange, roles);
-        }
-    }
-
-    protected void checkWsAuthToken(AbsWsListener wsListener, WebSocketHttpExchange exchange, String[] roles) throws AuthException{
-
-        AuthPrincipal authPrincipal = RestUtil.getWsAuthPrincipal(exchange);
-        if(null == authPrincipal){
-            throw new AuthException("invalid ws auth token");
-        }
-
-        Date now = new Date();
-        if(authPrincipal.getExpireTime().before(now)){
-            throw new AuthException("ws auth token expired");
-        }
-
-        boolean hasRole = wsListener.hasRole(exchange, authPrincipal, roles);
-        if(!hasRole){
-            throw new AuthException("ws no user or mis-match role");
-        }
     }
 
     protected void checkAuth(Method method, HttpServerExchange httpServerExchange) throws AuthException{
@@ -383,8 +363,8 @@ public class RestServer {
             throw new Exception("guard token expired");
         }
 
-        String restPath = RestUtil.getRestPath(method);
-        if(guardPrincipal.getPath().equals(restPath)){
+        String methodPath = RestUtil.getMethodPath(method);
+        if(guardPrincipal.getPath().equals(methodPath)){
             throw new Exception("mis-match method");
         }
     }
@@ -524,7 +504,7 @@ public class RestServer {
                 String path = httpServerExchange.getRequestPath();
                 String remoteIp = RestUtil.getRemoteIp(httpServerExchange);
 
-                if(path.startsWith(basePath + "/api/")){
+                if(path.startsWith(basePath + "/api/") && !path.endsWith("/health/check")){
                     accessLogger.info(remoteIp + " => " + path);
                 }
 

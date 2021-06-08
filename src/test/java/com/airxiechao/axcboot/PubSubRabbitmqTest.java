@@ -5,11 +5,11 @@ import com.airxiechao.axcboot.communication.pubsub.IPubSub;
 import com.airxiechao.axcboot.communication.pubsub.PubSubManager;
 import com.airxiechao.axcboot.util.MapBuilder;
 
-public class PubSubTest {
-
+public class PubSubRabbitmqTest {
     public static void main(String[] args) throws InterruptedException {
 
-        IPubSub pubsub = PubSubManager.getInstance().createPubSub("test-pubsub", 2, 5, 10);
+        IPubSub pubsub = PubSubManager.getInstance().createRabbitmq(
+                "localhost", 5672, "admin", "123456", "/");
 
         pubsub.subscribe("e1", "a", map -> {
 
@@ -27,12 +27,15 @@ public class PubSubTest {
             return new Response();
         });
 
+        int i = 100;
         while (true){
             pubsub.publish("e1", new MapBuilder()
-                    .put("p", "111")
+                    .put("p", i++ + "")
                     .build());
 
-            pubsub.unsubscribe("e1", "a");
+            if(i == 200){
+                pubsub.unsubscribe("e1", "a");
+            }
 
             Thread.sleep(1000);
         }

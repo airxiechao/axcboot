@@ -11,4 +11,10 @@ public @interface Table {
     String value();
     String datasource() default "";
     String datasourceMethod() default "";
+    String primaryKeyMethod() default "BTREE";
+    boolean primaryKeyAutoIncrement() default true;
+    String engine() default "InnoDB";
+    String charset() default "utf8mb4";
+    String collate() default "utf8mb4_general_ci";
+    String rowFormat() default "Dynamic";
 }

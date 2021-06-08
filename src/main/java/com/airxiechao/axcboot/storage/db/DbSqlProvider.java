@@ -1,8 +1,6 @@
 package com.airxiechao.axcboot.storage.db;
 
-import com.airxiechao.axcboot.storage.annotation.Table;
 import com.airxiechao.axcboot.storage.db.util.DbUtil;
-import com.airxiechao.axcboot.util.StringUtil;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.jdbc.SQL;
 
@@ -54,7 +52,7 @@ public class DbSqlProvider {
                 continue;
             }
 
-            sql.SET("`"+DbUtil.field(field) + "` = #{"+field.getName()+"}");
+            sql.SET("`"+DbUtil.column(field) + "` = #{"+field.getName()+"}");
         }
         sql.WHERE("id = #{id}");
 
@@ -71,7 +69,7 @@ public class DbSqlProvider {
                 continue;
             }
 
-            sql.VALUES("`"+DbUtil.field(field)+"`","#{"+field.getName()+"}");
+            sql.VALUES("`"+DbUtil.column(field)+"`","#{"+field.getName()+"}");
         }
 
         return sql.toString();
@@ -87,7 +85,7 @@ public class DbSqlProvider {
                 continue;
             }
 
-            sql.VALUES("`"+DbUtil.field(field)+"`","#{"+field.getName()+"}");
+            sql.VALUES("`"+DbUtil.column(field)+"`","#{"+field.getName()+"}");
         }
 
         return sql.toString();
@@ -104,7 +102,7 @@ public class DbSqlProvider {
                 continue;
             }
 
-            cols.put("`"+DbUtil.field(field)+"`", "#{element."+field.getName()+"}");
+            cols.put("`"+DbUtil.column(field)+"`", "#{element."+field.getName()+"}");
         }
         String colStr = String.join(",", cols.keySet());
         String valStr = String.join(",", cols.values());
@@ -132,9 +130,9 @@ public class DbSqlProvider {
                 continue;
             }
 
-            String col = "`"+DbUtil.field(field)+"`";
+            String col = "`"+DbUtil.column(field)+"`";
             updates.add(col+"=VALUES("+col+")");
-            sql.VALUES("`"+DbUtil.field(field)+"`","#{"+field.getName()+"}");
+            sql.VALUES("`"+DbUtil.column(field)+"`","#{"+field.getName()+"}");
         }
 
         String updateStr = String.join(",", updates);
@@ -153,9 +151,9 @@ public class DbSqlProvider {
                 continue;
             }
 
-            String col = "`"+DbUtil.field(field)+"`";
+            String col = "`"+DbUtil.column(field)+"`";
             updates.add(col+"=VALUES("+col+")");
-            sql.VALUES("`"+DbUtil.field(field)+"`","#{"+field.getName()+"}");
+            sql.VALUES("`"+DbUtil.column(field)+"`","#{"+field.getName()+"}");
         }
 
         String updateStr = String.join(",", updates);
@@ -175,7 +173,7 @@ public class DbSqlProvider {
                 continue;
             }
 
-            String col = "`"+ DbUtil.field(field)+"`";
+            String col = "`"+ DbUtil.column(field)+"`";
             updates.add(col+"=VALUES("+col+")");
             cols.put(col, "#{element."+field.getName()+"}");
         }
@@ -209,7 +207,7 @@ public class DbSqlProvider {
                 continue;
             }
 
-            String col = "`"+ DbUtil.field(field)+"`";
+            String col = "`"+ DbUtil.column(field)+"`";
             updates.add(col+"=VALUES("+col+")");
             cols.put(col, "#{element."+field.getName()+"}");
         }

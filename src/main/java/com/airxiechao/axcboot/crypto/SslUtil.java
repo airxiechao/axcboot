@@ -23,7 +23,7 @@ public class SslUtil {
             keyStorePassword = password.toCharArray();
         }
 
-        try( InputStream keyStoreInputStream = keyStoreFs.getFileAsStream(keyStoreFileName) ){
+        try( InputStream keyStoreInputStream = keyStoreFs.getInputStream(keyStoreFileName) ){
             keyStore.load(keyStoreInputStream, keyStorePassword);
         }
 

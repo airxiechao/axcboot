@@ -25,8 +25,12 @@ public class PublishHandler {
 
         logger.info("pubsub worker [{}] publish event [{}]", worker.getName(), event);
 
-        Map<String, ISubscriber> subs = worker.getSubscriber(event);
-        if(null == subs){
+        Map<String, ISubscriber> subs = null;
+        try {
+            subs = worker.getMatchedSubscriber(event);
+        } catch (Exception e) {
+            logger.error("pubsub worker [{}] handle event [{}] error",
+                    worker.getName(), event, e);
             return;
         }
 

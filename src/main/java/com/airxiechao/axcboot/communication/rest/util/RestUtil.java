@@ -8,6 +8,8 @@ import com.airxiechao.axcboot.communication.rest.security.AuthPrincipal;
 import com.airxiechao.axcboot.communication.rest.security.GuardPrincipal;
 import com.airxiechao.axcboot.communication.rest.security.SecurityProcess;
 import com.airxiechao.axcboot.util.TimeUtil;
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import io.undertow.server.HttpServerExchange;
 import io.undertow.server.handlers.Cookie;
 import io.undertow.server.handlers.form.FormData;
@@ -15,9 +17,16 @@ import io.undertow.server.handlers.form.FormDataParser;
 import io.undertow.util.HeaderValues;
 import io.undertow.util.Headers;
 import io.undertow.util.StatusCodes;
+import io.undertow.websockets.core.WebSocketCallback;
+import io.undertow.websockets.core.WebSocketChannel;
+import io.undertow.websockets.core.WebSockets;
 import io.undertow.websockets.spi.WebSocketHttpExchange;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Method;
+import java.net.URLEncoder;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.*;
@@ -64,8 +73,26 @@ public class RestUtil {
         }
     }
 
+    public static Integer queryWsIntegerParam(WebSocketHttpExchange exchange, String name){
+        String param = queryWsStringParam(exchange, name);
+        if(null == param || param.isBlank()){
+            return null;
+        }else{
+            return Integer.parseInt(param);
+        }
+    }
+
     public static Double queryDoubleParam(HttpServerExchange exchange, String name){
         String param = queryStringParam(exchange, name);
+        if(null == param || param.isBlank()){
+            return null;
+        }else{
+            return Double.parseDouble(param);
+        }
+    }
+
+    public static Double queryDoubleIntegerParam(WebSocketHttpExchange exchange, String name){
+        String param = queryWsStringParam(exchange, name);
         if(null == param || param.isBlank()){
             return null;
         }else{
@@ -82,9 +109,26 @@ public class RestUtil {
         }
     }
 
+    public static Long queryWsLongParam(WebSocketHttpExchange exchange, String name){
+        String param = queryWsStringParam(exchange, name);
+        if(null == param || param.isBlank()){
+            return null;
+        }else{
+            return Long.parseLong(param);
+        }
+    }
+
     public static Date queryTimeParam(HttpServerExchange exchange, String name){
         try {
             return TimeUtil.toTime(queryStringParam(exchange, name));
+        } catch (ParseException e) {
+            return null;
+        }
+    }
+
+    public static Date queryWsTimeParam(WebSocketHttpExchange exchange, String name){
+        try {
+            return TimeUtil.toTime(queryWsStringParam(exchange, name));
         } catch (ParseException e) {
             return null;
         }
@@ -99,6 +143,26 @@ public class RestUtil {
         PageParam pageParam = new PageParam(pageNo, pageSize, orderField, orderType);
 
         return pageParam;
+    }
+
+    public static String rawStringData(HttpServerExchange exchange){
+        exchange.startBlocking();
+        InputStream inputStream = exchange.getInputStream();
+        try {
+            return new String(inputStream.readAllBytes(), exchange.getRequestCharset());
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static <T> T rawJsonData(HttpServerExchange exchange, Class<T> tClass) {
+        String jsonString = rawStringData(exchange);
+        return JSON.parseObject(jsonString, tClass);
+    }
+
+    public static JSONObject rawJsonData(HttpServerExchange exchange) {
+        String jsonString = rawStringData(exchange);
+        return JSON.parseObject(jsonString);
     }
 
     public static Map<String, String> allFormStringData(HttpServerExchange exchange){
@@ -177,13 +241,24 @@ public class RestUtil {
         }
     }
 
+    public static FormData.FormValue formFileFormData(HttpServerExchange exchange, String name){
+        FormData formData = exchange.getAttachment(FormDataParser.FORM_DATA);
+
+        if(null != formData  && null != formData.get(name) &&
+                null != formData.get(name).getFirst() && formData.get(name).getFirst().isFileItem() ){
+            return formData.get(name).getFirst();
+        }else{
+            return null;
+        }
+    }
+
     public static void redirect(HttpServerExchange httpServerExchange, String path){
         httpServerExchange.setStatusCode(StatusCodes.FOUND);
         httpServerExchange.getResponseHeaders().put(Headers.LOCATION, path);
         httpServerExchange.endExchange();
     }
 
-    public static String getRestPath(Method method){
+    public static String getMethodPath(Method method){
         String path = "";
 
         Get get = method.getAnnotation(Get.class);
@@ -201,7 +276,7 @@ public class RestUtil {
             path = delete.value();
         }
 
-        return "/api/"+path;
+        return "/api"+path;
     }
 
     public static String getRemoteIp(HttpServerExchange exchange){
@@ -285,5 +360,23 @@ public class RestUtil {
         return null;
     }
 
+    public static void setDownloadHerder(HttpServerExchange exchange, String fileName){
+        exchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/octet-stream");
+        try {
+            exchange.getResponseHeaders().put(Headers.CONTENT_DISPOSITION,
+                    "attachment; filename=\"" + URLEncoder.encode(fileName, "UTF-8") + "\"");
+        } catch (UnsupportedEncodingException e) {
+
+        }
+    }
+
+    public static void sendWsText(String message, WebSocketChannel channel, WebSocketCallback<Void> callback){
+        WebSockets.sendText(message, channel, callback);
+    }
+
+    public static void sendWsObject(Object obj, WebSocketChannel channel, WebSocketCallback<Void> callback){
+        String message = JSON.toJSONString(obj);
+        WebSockets.sendText(message, channel, callback);
+    }
 }
 

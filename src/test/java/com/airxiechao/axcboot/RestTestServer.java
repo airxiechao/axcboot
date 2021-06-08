@@ -1,10 +1,8 @@
 package com.airxiechao.axcboot;
 
 import com.airxiechao.axcboot.communication.common.Response;
-import com.airxiechao.axcboot.communication.common.annotation.Params;
 import com.airxiechao.axcboot.communication.rest.annotation.Get;
 import com.airxiechao.axcboot.communication.common.annotation.Param;
-import com.airxiechao.axcboot.communication.rest.security.AuthPrincipal;
 import com.airxiechao.axcboot.communication.rest.server.RestServer;
 import com.airxiechao.axcboot.communication.rest.util.RestUtil;
 import com.airxiechao.axcboot.util.AnnotationUtil;
@@ -14,7 +12,6 @@ import com.airxiechao.axcboot.util.ProxyUtil;
 import com.alibaba.fastjson.JSON;
 import io.undertow.server.HttpServerExchange;
 
-import java.util.HashMap;
 import java.util.Map;
 
 public class RestTestServer {
@@ -27,6 +24,7 @@ public class RestTestServer {
             });
 
         restServer
+                .registerConsul(10)
                 .registerHandler(RestHandler.class)
                 .registerStatic("/", "html",
                         "index.html", "login.html", null);
@@ -81,7 +79,7 @@ class RestClient {
             String path = AnnotationUtil.getMethodAnnotation(method, Get.class).value();
             Map params = (Map)args[0];
 
-            String ret = HttpUtil.get("http://127.0.0.1/api"+path, params);
+            String ret = HttpUtil.get("http://127.0.0.1/api"+path, params, 10);
             return JSON.parseObject(ret, Response.class);
         });
     }

@@ -15,7 +15,7 @@ public class RedisManager {
 
     private Map<String, Redis> redisMap = new ConcurrentHashMap<>();
 
-    private Redis createRedis(String name, String ip, int port, String password, int maxPoolSize){
+    public Redis createRedis(String name, String ip, int port, String password, int maxPoolSize){
         Redis cache = new Redis(name, ip, port, password, maxPoolSize);
         redisMap.put(name, cache);
         return cache;
@@ -23,15 +23,6 @@ public class RedisManager {
 
     public Redis getRedis(String name){
         return redisMap.get(name);
-    }
-
-    public synchronized Redis getRedis(String name, String ip, int port, String password, int maxPoolSize){
-        if(redisMap.containsKey(name)){
-            return redisMap.get(name);
-        }
-
-        Redis cache = createRedis(name, ip, port, password, maxPoolSize);
-        return cache;
     }
 
     public void clear(){

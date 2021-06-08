@@ -1,5 +1,6 @@
 package com.airxiechao.axcboot.communication.pubsub;
 
+import com.airxiechao.axcboot.communication.pubsub.rabbitmq.RabbitmqPubSub;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -12,7 +13,8 @@ public class PubSubManager {
 
     private static PubSubManager ourInstance = new PubSubManager();
 
-    private Map<String, PubSubWorker> workers = new ConcurrentHashMap<>();
+    private Map<String, IPubSub> pubsubs = new ConcurrentHashMap<>();
+    private IPubSub rabbitmqPubSub;
 
     public static PubSubManager getInstance() {
         return ourInstance;
@@ -21,13 +23,29 @@ public class PubSubManager {
     private PubSubManager() {
     }
 
-    public PubSubWorker getPubSub(String name, int corePoolSize, int maxPoolSize, int maxQueueSize){
-        PubSubWorker worker = workers.get(name);
-        if(null == worker){
-            worker = new PubSubWorker(name, corePoolSize, maxPoolSize, maxQueueSize);
-            workers.put(name, worker);
+    public IPubSub createPubSub(String name, int corePoolSize, int maxPoolSize, int maxQueueSize){
+        IPubSub pubSub = pubsubs.get(name);
+        if(null == pubSub){
+            pubSub = new PubSubWorker(name, corePoolSize, maxPoolSize, maxQueueSize);
+            pubsubs.put(name, pubSub);
         }
 
-        return worker;
+        return pubSub;
+    }
+
+    public IPubSub getPubSub(String name){
+        return pubsubs.get(name);
+    }
+
+    public IPubSub createRabbitmq(String host, int port, String username, String password, String virtualHost){
+        if(null == rabbitmqPubSub){
+            rabbitmqPubSub = new RabbitmqPubSub(host, port, username, password, virtualHost);
+        }
+
+        return rabbitmqPubSub;
+    }
+
+    public IPubSub getRabbitmq(){
+        return rabbitmqPubSub;
     }
 }
