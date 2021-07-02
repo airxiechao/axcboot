@@ -114,6 +114,7 @@ class Client{
 ```
 
 - ltc 线程通信
+
 ```java
 import com.airxiechao.axcboot.communication.common.Response;
 import com.airxiechao.axcboot.communication.ltc.CallableWorker;
@@ -161,6 +162,7 @@ public class LtcTest {
 ```
 
 - pubsub 发布订阅
+
 ```java
 import com.airxiechao.axcboot.communication.common.Response;
 import com.airxiechao.axcboot.communication.pubsub.PubSubManager;
@@ -171,25 +173,25 @@ public class PubSubTest {
 
     public static void main(String[] args) throws InterruptedException {
 
-        PubSubWorker worker = PubSubManager.getInstance().getPubSub("test-pubsub", 2, 5, 10);
+        PubSubWorker worker = PubSubManager.getInstance().createPubSub("test-pubsub", 2, 5, 10);
 
         worker.subscribe("e1", "a", map -> {
 
-            String p = (String)map.get("p");
-            System.out.println("a -> "+p);
+            String p = (String) map.get("p");
+            System.out.println("a -> " + p);
 
             return new Response();
         });
 
         worker.subscribe("e1", "b", map -> {
 
-            String p = (String)map.get("p");
-            System.out.println("b -> "+p);
+            String p = (String) map.get("p");
+            System.out.println("b -> " + p);
 
             return new Response();
         });
 
-        while (true){
+        while (true) {
             worker.publish("e1", new MapBuilder()
                     .put("p", "111")
                     .build());
@@ -198,12 +200,13 @@ public class PubSubTest {
 
             Thread.sleep(1000);
         }
-        
+
     }
 }
 ```
 
 - rest 微服务
+
 ```java
 import com.airxiechao.axcboot.communication.common.Response;
 import com.airxiechao.axcboot.communication.common.annotation.Params;
@@ -226,7 +229,7 @@ public class RestTestServer {
 
     public static void main(String[] args) throws InterruptedException {
         RestServer restServer = new RestServer("test");
-        restServer.config("0.0.0.0", 80, null, null,
+        restServer.config("0.0.0.0", 80, null, null, null,
             (exchange, principal, roles) -> {
                 return false;
             });
@@ -294,10 +297,11 @@ class RestClient {
 ```
 
 - websocket
+
 ```java
 import com.airxiechao.axcboot.communication.common.Response;
-import com.airxiechao.axcboot.communication.websocket.annotation.WsMessageType;
-import com.airxiechao.axcboot.communication.websocket.server.WsServer;
+import com.airxiechao.axcboot.communication.websocket.annotation.WsHandler;
+import com.airxiechao.axcboot.communication.websocket.annotation.WsHandlerserver.WsServer;
 import com.alibaba.fastjson.JSON;
 import io.undertow.websockets.core.WebSocketChannel;
 
@@ -314,7 +318,7 @@ public class WsServerTest {
 
 class ParkWsHandler {
 
-    @WsMessageType("add")
+    @WsHandler("add")
     public static Object add(Object payload, WsServer server, WebSocketChannel channel){
         Map map = JSON.parseObject((String)payload, Map.class);
 
@@ -360,6 +364,7 @@ ws.onclose = function(){
 ## Storage
 
 - db 多数据源数据库
+
 ```java
 
 import com.airxiechao.axcboot.storage.annotation.Table;
@@ -434,6 +439,7 @@ public class DbTest {
 ```
 
 - cache 缓存
+
 ```java
 // expire cache
 ExpiringCacheManager.getInstance().createCache("expire", 5, ExpiringCache.UNIT.SECOND);
@@ -454,6 +460,7 @@ int value2 = (Integer) memoryCache.get("key2");
 ## Process
 
 - transaction 分布式事务
+
 ```java
 import com.airxiechao.axcboot.communication.common.Response;
 import com.airxiechao.axcboot.process.transaction.TransactionPipeline;
@@ -502,6 +509,7 @@ public class TransactionTest {
 ```
 
 - schedule 定时任务
+
 ```java
 ScheduleTask scheduleTask = ScheduleTaskManager.getInstance().getScheduleTask("scheduler", 1);
 scheduleTask.shceduleEveryPeriod(1, TimeUnit.SECONDS, ()->{

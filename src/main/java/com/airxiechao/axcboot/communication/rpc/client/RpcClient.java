@@ -3,8 +3,8 @@ package com.airxiechao.axcboot.communication.rpc.client;
 import com.airxiechao.axcboot.communication.common.RequestId;
 import com.airxiechao.axcboot.communication.common.Response;
 import com.airxiechao.axcboot.communication.common.annotation.Query;
+import com.airxiechao.axcboot.communication.common.security.IAuthTokenChecker;
 import com.airxiechao.axcboot.communication.rpc.common.*;
-import com.airxiechao.axcboot.communication.rpc.security.IRpcAuthChecker;
 import com.airxiechao.axcboot.communication.rpc.util.RpcUtil;
 import com.alibaba.fastjson.JSON;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -56,7 +56,7 @@ public class RpcClient {
     protected IRpcClientListener disconnectListener;
 
     protected int reconnectDelaySecs = 5;
-    private IRpcAuthChecker authChecker;
+    private IAuthTokenChecker authTokenChecker;
     private boolean verboseLog = false;
     private SslContext sslCtx;
 
@@ -80,7 +80,7 @@ public class RpcClient {
             int port,
             int numWorkerThreads,
             int reconnectDelaySecs,
-            IRpcAuthChecker authChecker,
+            IAuthTokenChecker authTokenChecker,
             IRpcEventListener connectListener,
             IRpcClientListener disconnectListener
     ){
@@ -89,7 +89,7 @@ public class RpcClient {
         this.numIoThreads = 1;
         this.numWorkerThreads = numWorkerThreads;
         this.reconnectDelaySecs = reconnectDelaySecs;
-        this.authChecker = authChecker;
+        this.authTokenChecker = authTokenChecker;
         this.connectListener = connectListener;
         this.disconnectListener = disconnectListener;
 
@@ -566,7 +566,7 @@ public class RpcClient {
                     String payload = message.getPayload();
                     Map payloadMap = JSON.parseObject(payload, Map.class);
 
-                    RpcUtil.checkAuth(handler, ctx, payloadMap, authChecker);
+                    RpcUtil.checkAuth(handler, ctx, payloadMap, authTokenChecker);
                     RpcUtil.checkParameter(handler, payloadMap);
                     response = handler.handle(ctx, payloadMap);
                 }catch (Exception e){

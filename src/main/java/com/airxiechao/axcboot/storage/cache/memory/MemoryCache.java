@@ -10,9 +10,6 @@ public class MemoryCache<K,V> {
 
     private static final Logger logger = LoggerFactory.getLogger(MemoryCache.class);
 
-    /**
-     * 缓存仓库名称
-     */
     private String cacheName;
 
     public MemoryCache(String cacheName){

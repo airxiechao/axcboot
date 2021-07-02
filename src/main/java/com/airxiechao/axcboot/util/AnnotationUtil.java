@@ -8,6 +8,34 @@ import java.util.List;
 
 public class AnnotationUtil {
 
+    public static Annotation[] getClassAnnotations(Class cls) {
+        List<Annotation> annotationList = new ArrayList<>();
+        annotationList.addAll(Arrays.asList(cls.getAnnotations()));
+
+        Class[] interfaces = cls.getInterfaces();
+        for (Class it : interfaces) {
+            annotationList.addAll(Arrays.asList(it.getAnnotations()));
+        }
+
+        return annotationList.stream().toArray(Annotation[]::new);
+    }
+
+    public static <T extends Annotation> T getClassAnnotations(Class cls, Class<T> annotationClass) {
+        T annotation = (T)cls.getAnnotation(annotationClass);
+        if(null != annotation){
+            return annotation;
+        }
+
+        Annotation[] annotations = getClassAnnotations(cls);
+        for(Annotation ann : annotations){
+            if(ann.annotationType() == annotationClass){
+                return (T)ann;
+            }
+        }
+
+        return null;
+    }
+
     public static Annotation[] getMethodAnnotations(Method method) {
         List<Annotation> annotationList = new ArrayList<>();
         annotationList.addAll(Arrays.asList(method.getAnnotations()));

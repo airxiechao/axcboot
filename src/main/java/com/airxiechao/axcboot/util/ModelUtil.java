@@ -59,8 +59,8 @@ public class ModelUtil {
         return obj;
     }
 
-    public static <T> Map<String, Object> toMap(T obj, boolean camelCaseToUnderscore) throws Exception {
-        Map<String, Object> map = new HashMap<>();
+    public static <T> Map<String, T> toMap(Object obj, boolean camelCaseToUnderscore) {
+        Map<String, T> map = new HashMap<>();
 
         Field[] fields = obj.getClass().getDeclaredFields();
         for(Field field : fields){
@@ -71,8 +71,13 @@ public class ModelUtil {
             field.setAccessible(true);
 
             String fieldName = camelCaseToUnderscore ? DbUtil.column(field) : field.getName();
-            Object fieldValue = field.get(obj);
-            map.put(fieldName, fieldValue);
+            Object fieldValue = null;
+            try {
+                fieldValue = field.get(obj);
+            } catch (IllegalAccessException e) {
+                throw new RuntimeException(e);
+            }
+            map.put(fieldName, (T)fieldValue);
         }
 
         return map;

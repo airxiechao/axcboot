@@ -3,8 +3,8 @@ package com.airxiechao.axcboot.communication.rpc.util;
 import com.airxiechao.axcboot.communication.common.annotation.Auth;
 import com.airxiechao.axcboot.communication.common.annotation.Param;
 import com.airxiechao.axcboot.communication.common.annotation.Params;
+import com.airxiechao.axcboot.communication.common.security.IAuthTokenChecker;
 import com.airxiechao.axcboot.communication.rpc.common.IRpcMessageHandler;
-import com.airxiechao.axcboot.communication.rpc.security.IRpcAuthChecker;
 import com.airxiechao.axcboot.communication.rpc.server.RpcServer;
 import com.airxiechao.axcboot.util.StringUtil;
 import com.airxiechao.axcboot.util.TimeUtil;
@@ -105,6 +105,20 @@ public class RpcUtil {
     }
 
     /**
+     * 获取authToken
+     * @param queryParams
+     * @return
+     */
+    public static String getAuthToken(Map<String, Object> queryParams){
+        if(null == queryParams){
+            return null;
+        }
+
+        String authToken = (String)queryParams.get("auth");
+        return authToken;
+    }
+
+    /**
      * 检查权限
      * @param handler
      * @param ctx
@@ -112,14 +126,14 @@ public class RpcUtil {
      * @param rpcAuthChecker
      * @throws Exception
      */
-    public static void checkAuth(IRpcMessageHandler handler, ChannelHandlerContext ctx, Map<String, Object> queryParams, IRpcAuthChecker rpcAuthChecker) throws Exception {
+    public static void checkAuth(IRpcMessageHandler handler, ChannelHandlerContext ctx, Map<String, Object> queryParams, IAuthTokenChecker rpcAuthChecker) throws Exception {
 
-        Method mothod = getHandleMethod(handler.getClass());
-        if(null == mothod){
+        Method method = getHandleMethod(handler.getClass());
+        if(null == method){
             throw new Exception("no handle method");
         }
 
-        Auth auth = mothod.getAnnotation(Auth.class);
+        Auth auth = method.getAnnotation(Auth.class);
         if(null == auth){
             return;
         }
@@ -128,16 +142,16 @@ public class RpcUtil {
             throw new Exception("no auth checker");
         }
 
-        if(null == queryParams || !queryParams.containsKey("auth")){
-            throw new Exception("auth token is empty");
-        }
-
-        String authToken = (String)queryParams.get("auth");
+        String authToken = getAuthToken(queryParams);
         if(StringUtil.isEmpty(authToken)){
             throw new Exception("auth token is empty");
         }
 
-        boolean passed = rpcAuthChecker.check(ctx, authToken);
+        String scope = auth.scope();
+        String item = auth.item();
+        int mode = auth.mode();
+
+        boolean passed = rpcAuthChecker.validate(authToken, scope, item, mode);
         if(!passed){
             throw new Exception("auth check fails");
         }

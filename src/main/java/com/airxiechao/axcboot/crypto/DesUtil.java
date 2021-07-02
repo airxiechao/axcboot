@@ -13,31 +13,25 @@ public class DesUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(DesUtil.class);
 
-    private static SecretKey desKey;
-
-    static {
-        try {
-            byte key[] = "secretgarden".getBytes();
-            DESKeySpec desKeySpec = new DESKeySpec(key);
-            SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("DES");
-            desKey = keyFactory.generateSecret(desKeySpec);
-        } catch (Exception e) {
-            logger.error("des key generate error", e);
-        }
+    public static SecretKey buildDesKey(String key) throws Exception {
+        byte keyBytes[] = key.getBytes();
+        DESKeySpec desKeySpec = new DESKeySpec(keyBytes);
+        SecretKeyFactory keyFactory = SecretKeyFactory.getInstance("DES");
+        return keyFactory.generateSecret(desKeySpec);
     }
 
-    public static String encrypt(String text) throws Exception {
+    public static String encrypt(String key, String text) throws Exception {
 
         Cipher desCipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-        desCipher.init(Cipher.ENCRYPT_MODE, desKey);
+        desCipher.init(Cipher.ENCRYPT_MODE, buildDesKey(key));
 
         return Base64.getEncoder().encodeToString(desCipher.doFinal(text.getBytes("UTF-8")));
     }
 
-    public static String decrpty(String text) throws Exception {
+    public static String decrypt(String key, String text) throws Exception {
 
         Cipher desCipher = Cipher.getInstance("DES/ECB/PKCS5Padding");
-        desCipher.init(Cipher.DECRYPT_MODE, desKey);
+        desCipher.init(Cipher.DECRYPT_MODE, buildDesKey(key));
 
         return new String(desCipher.doFinal(Base64.getDecoder().decode(text)));
     }

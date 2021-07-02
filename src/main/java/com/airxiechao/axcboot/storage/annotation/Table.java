@@ -11,7 +11,6 @@ public @interface Table {
     String value();
     String datasource() default "";
     String datasourceMethod() default "";
-    String primaryKeyColumn() default "id";
     String primaryKeyMethod() default "BTREE";
     boolean primaryKeyAutoIncrement() default true;
     String engine() default "InnoDB";

@@ -8,9 +8,9 @@ import io.undertow.server.handlers.CookieImpl;
 
 public class SecurityProcess {
 
-    public static AuthPrincipal getAuthPrincipalFromToken(String token){
+    public static AuthPrincipal getAuthPrincipalFromToken(String key, String token){
         try{
-            String json = DesUtil.decrpty(token);
+            String json = DesUtil.decrypt(key, token);
             AuthPrincipal authUser = JSON.parseObject(json, AuthPrincipal.class);
             return authUser;
         }catch (Exception e){
@@ -18,9 +18,9 @@ public class SecurityProcess {
         }
     }
 
-    public static String genAuthToken(AuthPrincipal authPrincipal) throws Exception {
+    public static String genAuthToken(String key, AuthPrincipal authPrincipal) throws Exception {
         String json = JSON.toJSONString(authPrincipal);
-        return DesUtil.encrypt(json);
+        return DesUtil.encrypt(key, json);
     }
 
 
@@ -30,9 +30,9 @@ public class SecurityProcess {
         httpServerExchange.setResponseCookie(authCookie);
     }
 
-    public static GuardPrincipal getGuardPrincipalFromToken(String token){
+    public static GuardPrincipal getGuardPrincipalFromToken(String key, String token){
         try{
-            String json = DesUtil.decrpty(token);
+            String json = DesUtil.decrypt(key, token);
             GuardPrincipal guardPrincipal = JSON.parseObject(json, GuardPrincipal.class);
             return guardPrincipal;
         }catch (Exception e){
@@ -40,8 +40,8 @@ public class SecurityProcess {
         }
     }
 
-    public static String genGuardToken(GuardPrincipal guardPrincipal) throws Exception {
+    public static String genGuardToken(String key, GuardPrincipal guardPrincipal) throws Exception {
         String json = JSON.toJSONString(guardPrincipal);
-        return DesUtil.encrypt(json);
+        return DesUtil.encrypt(key, json);
     }
 }

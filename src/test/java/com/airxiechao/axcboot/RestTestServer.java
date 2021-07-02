@@ -1,35 +1,37 @@
 package com.airxiechao.axcboot;
 
 import com.airxiechao.axcboot.communication.common.Response;
-import com.airxiechao.axcboot.communication.common.annotation.Params;
 import com.airxiechao.axcboot.communication.rest.annotation.Get;
 import com.airxiechao.axcboot.communication.common.annotation.Param;
-import com.airxiechao.axcboot.communication.rest.security.AuthPrincipal;
 import com.airxiechao.axcboot.communication.rest.server.RestServer;
 import com.airxiechao.axcboot.communication.rest.util.RestUtil;
-import com.airxiechao.axcboot.util.AnnotationUtil;
-import com.airxiechao.axcboot.util.HttpUtil;
-import com.airxiechao.axcboot.util.MapBuilder;
-import com.airxiechao.axcboot.util.ProxyUtil;
+import com.airxiechao.axcboot.crypto.SslUtil;
+import com.airxiechao.axcboot.storage.fs.LocalFs;
+import com.airxiechao.axcboot.util.*;
 import com.alibaba.fastjson.JSON;
 import io.undertow.server.HttpServerExchange;
 
-import java.util.HashMap;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 import java.util.Map;
 
 public class RestTestServer {
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) throws Exception {
+
         RestServer restServer = new RestServer("test");
-        restServer.config("0.0.0.0", 80, null, null,
-            (exchange, principal, roles) -> {
+        restServer.config("0.0.0.0", 443, null,
+                SslUtil.buildKeyManagerFactory(new LocalFs("d:/test"), "rest-server-key.jks", "123456"),
+                null,
+            (token, scope, item, mode) -> {
                 return false;
             });
 
         restServer
+                .registerConsul(10)
                 .registerHandler(RestHandler.class)
                 .registerStatic("/", "html",
-                        "index.html", "login.html", null);
+                        "index.html", "login.html");
 
         restServer.start();
 
@@ -39,7 +41,7 @@ public class RestTestServer {
                 .put("a", "1")
                 .put("b", "2")
                 .build();
-        Response resp = RestClient.get(Add.class).add(params);
+        Response resp = RestClient.getBySsl(Add.class).add(params);
         System.out.println(resp.getData());
     }
 
@@ -81,7 +83,17 @@ class RestClient {
             String path = AnnotationUtil.getMethodAnnotation(method, Get.class).value();
             Map params = (Map)args[0];
 
-            String ret = HttpUtil.get("http://127.0.0.1/api"+path, params);
+            String ret = HttpUtil.get("http://127.0.0.1/api"+path, params, null, null, 10);
+            return JSON.parseObject(ret, Response.class);
+        });
+    }
+
+    public static <T> T getBySsl(Class<T> cls){
+        return ProxyUtil.buildProxy(cls, (proxy, method, args) -> {
+            String path = AnnotationUtil.getMethodAnnotation(method, Get.class).value();
+            Map params = (Map)args[0];
+
+            String ret = HttpsUtil.get("https://127.0.0.1:443/api"+path, params, null, null, 10);
             return JSON.parseObject(ret, Response.class);
         });
     }

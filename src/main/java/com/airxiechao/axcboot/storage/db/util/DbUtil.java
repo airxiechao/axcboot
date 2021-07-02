@@ -11,10 +11,7 @@ import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.Arrays;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 public class DbUtil {
@@ -132,7 +129,7 @@ public class DbUtil {
         String tableCharset = table.charset();
         String tableCollate = table.collate();
         String tableRowFormat = table.rowFormat();
-        String tablePrimaryKeyColumn = table.primaryKeyColumn();
+        String tablePrimaryKeyColumn = "id";
         String tablePrimaryKeyMethod = table.primaryKeyMethod();
         boolean tablePrimaryKeyAutoIncrement = table.primaryKeyAutoIncrement();
 
@@ -176,19 +173,25 @@ public class DbUtil {
         pwColumn.println(String.format("PRIMARY KEY (`%s`) USING %s,", tablePrimaryKeyColumn, tablePrimaryKeyMethod));
 
         // indexes
-        Indexes indexes = tClass.getAnnotation(Indexes.class);
-        if(null != indexes){
-            for(Index index : indexes.value()){
-                String indexType = index.unique() ? "UNIQUE " : "";
-                List<String> columns = Arrays.stream(index.fields()).map(f -> DbUtil.column(tClass, f)).collect(Collectors.toList());
-                String indexColumns = String.join(",", columns.stream().map(c -> "`" + c + "`").collect(Collectors.toList()));
-                String indexMethod = index.method();
-                String indexNamePrefix = index.unique() ? "unique-" : "index-";
-                String indexName = indexNamePrefix + String.join("-", columns);
+        List<Index> indexList = new ArrayList<>();
+        Index singleIndex = tClass.getAnnotation(Index.class);
+        if(null != singleIndex){
+            indexList.add(singleIndex);
+        }
+        Indexes multipleIndexes = tClass.getAnnotation(Indexes.class);
+        if(null != multipleIndexes){
+            indexList.addAll(Arrays.asList(multipleIndexes.value()));
+        }
+        for(Index index : indexList){
+            String indexType = index.unique() ? "UNIQUE " : "";
+            List<String> columns = Arrays.stream(index.fields()).map(f -> DbUtil.column(tClass, f)).collect(Collectors.toList());
+            String indexColumns = String.join(",", columns.stream().map(c -> "`" + c + "`").collect(Collectors.toList()));
+            String indexMethod = index.method();
+            String indexNamePrefix = index.unique() ? "unique-" : "index-";
+            String indexName = indexNamePrefix + String.join("-", columns);
 
-                pwColumn.print(padding);
-                pwColumn.println(String.format("%sINDEX `%s`(%s) USING %s,", indexType, indexName, indexColumns, indexMethod));
-            }
+            pwColumn.print(padding);
+            pwColumn.println(String.format("%sINDEX `%s`(%s) USING %s,", indexType, indexName, indexColumns, indexMethod));
         }
 
         String ddlColumn = swColumn.toString();

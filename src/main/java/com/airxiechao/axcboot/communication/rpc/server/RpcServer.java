@@ -3,8 +3,8 @@ package com.airxiechao.axcboot.communication.rpc.server;
 import com.airxiechao.axcboot.communication.common.RequestId;
 import com.airxiechao.axcboot.communication.common.Response;
 import com.airxiechao.axcboot.communication.common.annotation.Query;
+import com.airxiechao.axcboot.communication.common.security.IAuthTokenChecker;
 import com.airxiechao.axcboot.communication.rpc.common.*;
-import com.airxiechao.axcboot.communication.rpc.security.IRpcAuthChecker;
 import com.airxiechao.axcboot.communication.rpc.util.RpcUtil;
 import com.airxiechao.axcboot.util.UuidUtil;
 import com.alibaba.fastjson.JSON;
@@ -51,7 +51,7 @@ public class RpcServer {
     private Channel serverChannel;
     private Map<String, IRpcMessageHandler> serviceHandlers = new HashMap<>();
     private RpcServerMessageRouter router;
-    private IRpcAuthChecker authChecker;
+    private IAuthTokenChecker authTokenChecker;
     private boolean verboseLog = false;
     private SslContext sslCtx;
     protected IRpcEventListener connectListener;
@@ -68,7 +68,7 @@ public class RpcServer {
             int port,
             int numIoThreads,
             int numWorkerThreads,
-            IRpcAuthChecker authChecker,
+            IAuthTokenChecker authChecker,
             IRpcEventListener connectListener,
             IRpcClientListener disconnectListener
     ){
@@ -76,7 +76,7 @@ public class RpcServer {
         this.serverPort = port;
         this.numIoThreads = numIoThreads;
         this.numWorkerThreads = numWorkerThreads;
-        this.authChecker = authChecker;
+        this.authTokenChecker = authChecker;
         this.connectListener = connectListener;
         this.disconnectListener = disconnectListener;
 
@@ -537,7 +537,7 @@ public class RpcServer {
                     String payload = message.getPayload();
                     Map payloadMap = JSON.parseObject(payload, Map.class);
 
-                    RpcUtil.checkAuth(handler, ctx, payloadMap, authChecker);
+                    RpcUtil.checkAuth(handler, ctx, payloadMap, authTokenChecker);
                     RpcUtil.checkParameter(handler, payloadMap);
                     response = handler.handle(ctx, payloadMap);
                 }catch (Exception e){
