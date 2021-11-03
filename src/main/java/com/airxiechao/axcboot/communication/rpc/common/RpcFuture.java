@@ -2,7 +2,6 @@ package com.airxiechao.axcboot.communication.rpc.common;
 
 import com.airxiechao.axcboot.communication.common.Response;
 
-import java.sql.Time;
 import java.util.concurrent.*;
 
 public class RpcFuture implements Future<Response> {

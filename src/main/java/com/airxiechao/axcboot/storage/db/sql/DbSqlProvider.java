@@ -1,6 +1,6 @@
-package com.airxiechao.axcboot.storage.db;
+package com.airxiechao.axcboot.storage.db.sql;
 
-import com.airxiechao.axcboot.storage.db.util.DbUtil;
+import com.airxiechao.axcboot.storage.db.sql.util.DbUtil;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.jdbc.SQL;
 

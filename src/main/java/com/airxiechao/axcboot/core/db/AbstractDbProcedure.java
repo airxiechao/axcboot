@@ -1,6 +1,6 @@
 package com.airxiechao.axcboot.core.db;
 
-import com.airxiechao.axcboot.storage.db.DbManager;
+import com.airxiechao.axcboot.storage.db.sql.DbManager;
 
 public abstract class AbstractDbProcedure {
 

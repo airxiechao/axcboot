@@ -6,6 +6,7 @@ import com.airxiechao.axcboot.communication.common.annotation.Query;
 import com.airxiechao.axcboot.communication.common.security.IAuthTokenChecker;
 import com.airxiechao.axcboot.communication.rpc.common.*;
 import com.airxiechao.axcboot.communication.rpc.util.RpcUtil;
+import com.airxiechao.axcboot.util.AnnotationUtil;
 import com.airxiechao.axcboot.util.UuidUtil;
 import com.alibaba.fastjson.JSON;
 import io.netty.bootstrap.ServerBootstrap;
@@ -42,6 +43,7 @@ public class RpcServer {
     }
 
     private String name;
+    private String uuid;
     private String serverIp;
     private int serverPort;
     private int numIoThreads;
@@ -54,13 +56,23 @@ public class RpcServer {
     private IAuthTokenChecker authTokenChecker;
     private boolean verboseLog = false;
     private SslContext sslCtx;
-    protected IRpcEventListener connectListener;
+    protected IRpcClientListener connectListener;
     protected IRpcClientListener disconnectListener;
 
     private RPC_SERVER_STATUS status = RPC_SERVER_STATUS.NOT_STARTED;
 
     public RpcServer(String name){
         this.name = name;
+        this.uuid = UuidUtil.random();
+    }
+
+    public RpcServer(String name, String uuid){
+        this.name = name;
+        this.uuid = uuid;
+    }
+
+    public String getUuid() {
+        return uuid;
     }
 
     public RpcServer config(
@@ -69,7 +81,7 @@ public class RpcServer {
             int numIoThreads,
             int numWorkerThreads,
             IAuthTokenChecker authChecker,
-            IRpcEventListener connectListener,
+            IRpcClientListener connectListener,
             IRpcClientListener disconnectListener
     ){
         this.serverIp = ip;
@@ -225,26 +237,53 @@ public class RpcServer {
 
     /**
      * 注册rpc请求处理器
-     * @param type
      * @param handler
+     * @param type
+     * @param method
      * @return
      */
-    public RpcServer registerRpcHandler(String type, IRpcMessageHandler handler){
-        serviceHandlers.put(type, handler);
+    public RpcServer registerRpcHandler(Object handler, String type, Method method){
+        method.setAccessible(true);
+        if(method.getDeclaringClass() != handler.getClass()){
+            logger.error("register rpc handler error: method not belong to handler");
+            return this;
+        }
+
+        serviceHandlers.put(type, (rpcExchange) -> {
+            try{
+                ChannelHandlerContext ctx = rpcExchange.getCtx();
+                Map<String, Object> payload = rpcExchange.getPayload();
+                RpcUtil.checkAuth(method, ctx, payload, authTokenChecker);
+                RpcUtil.checkParameter(method, payload);
+                return (Response)method.invoke(handler, new RpcExchange(ctx, payload));
+            }catch (Exception e){
+                logger.error("handle rpc service [{}] error",type, e);
+                return new Response().error(e.getMessage());
+            }
+
+        });
+
         return this;
+    }
+
+    public RpcServer registerRpcHandler(Object handler, Method method){
+        method.setAccessible(true);
+        Query query = AnnotationUtil.getMethodAnnotation(method, Query.class);
+        if (null == query) {
+            logger.error("register rpc handler error: no type");
+            return this;
+        }
+
+        String type = query.value();
+
+        return registerRpcHandler(handler, type, method);
     }
 
     public RpcServer registerRpcHandler(IRpcMessageHandler handler){
         try{
             Method method = RpcUtil.getHandleMethod(handler.getClass());
             if(null != method){
-                Query query = method.getAnnotation(Query.class);
-                if(null != query){
-                    String type = query.value();
-                    serviceHandlers.put(type, handler);
-                }else{
-                    logger.error("register rpc handler error: no type");
-                }
+                registerRpcHandler(handler, method);
             }else{
                 logger.error("register rpc handler error: no handle method");
             }
@@ -256,22 +295,26 @@ public class RpcServer {
         return this;
     }
 
-    public RpcServer registerRpcHandler(Class<? extends IRpcMessageHandler> cls){
+    public RpcServer registerRpcHandler(String type, IRpcMessageHandler handler){
         try{
-            Method method = RpcUtil.getHandleMethod(cls);
+            Method method = RpcUtil.getHandleMethod(handler.getClass());
             if(null != method){
-                Query query = method.getAnnotation(Query.class);
-                if(null != query){
-                    String type = query.value();
-                    serviceHandlers.put(type, cls.getConstructor().newInstance());
-                }else{
-                    logger.error("register rpc handler error: no type");
-                }
+                registerRpcHandler(handler, type, method);
             }else{
                 logger.error("register rpc handler error: no handle method");
             }
 
         }catch (Exception e){
+
+        }
+
+        return this;
+    }
+
+    public RpcServer registerRpcHandler(Class<? extends IRpcMessageHandler> cls){
+        try {
+            registerRpcHandler(cls.getConstructor().newInstance());
+        } catch (Exception e) {
             logger.error("register rpc handler error", e);
         }
 
@@ -282,7 +325,10 @@ public class RpcServer {
      * 注册心跳处理
      */
     private void registerHeartbeatHandler(){
-        registerRpcHandler(RpcMessage.TYPE_PING, (ctx, payload) -> {
+        registerRpcHandler(RpcMessage.TYPE_PING, (rpcExchange) -> {
+            ChannelHandlerContext ctx = rpcExchange.getCtx();
+            Map<String, Object> payload = rpcExchange.getPayload();
+
             String clientName = router.getClientByContext(ctx);
             String name = (String)payload.get("name");
 
@@ -334,8 +380,14 @@ public class RpcServer {
             }else{
                 resp = future.get();
             }
+
+            if(!resp.isSuccess()){
+                logger.error("rpc call client [{}] type [{}] error: {}", client, type, resp.getMessage());
+            }
+
             return resp;
         }catch (Exception e) {
+            logger.error("rpc call client [{}] type [{}] error", client, type, e);
             throw new RpcException(e);
         }
     }
@@ -400,7 +452,7 @@ public class RpcServer {
     public class RpcServerMessageRouter extends ChannelInboundHandlerAdapter {
 
         private ThreadPoolExecutor executor;
-        private Map<String, RpcContext> rpcContexts = new ConcurrentHashMap<>();
+        private RpcContextContainer rpcContextContainer = new RpcContextContainer();
         private Map<String, RpcClientFuture> pendingRequests = new ConcurrentHashMap<>();
 
         public RpcServerMessageRouter(){
@@ -431,7 +483,7 @@ public class RpcServer {
 
             logger.info("rpc-client-[{}] active", clientName);
 
-            runConnectListener(ctx);
+            runConnectListener(ctx, clientName);
 
             // 如果已经存在相同名称的其他客户端，则断开连接
             updateOrCloseRpcContext(clientName, ctx);
@@ -476,9 +528,9 @@ public class RpcServer {
             logger.error("close rpc-client-[{}] connection by uncaught error", client, verboseLog ? cause : null);
         }
 
-        public void runConnectListener(ChannelHandlerContext ctx){
+        public void runConnectListener(ChannelHandlerContext ctx, String client){
             if(null != connectListener){
-                Thread t = new Thread(()-> connectListener.handle(ctx));
+                Thread t = new Thread(()-> connectListener.handle(ctx, client));
                 t.setDaemon(true);
                 t.start();
             }
@@ -536,10 +588,7 @@ public class RpcServer {
                 try {
                     String payload = message.getPayload();
                     Map payloadMap = JSON.parseObject(payload, Map.class);
-
-                    RpcUtil.checkAuth(handler, ctx, payloadMap, authTokenChecker);
-                    RpcUtil.checkParameter(handler, payloadMap);
-                    response = handler.handle(ctx, payloadMap);
+                    response = handler.handle(new RpcExchange(ctx, payloadMap));
                 }catch (Exception e){
                     logger.error("handle rpc service [{}] error", message.getType(), e);
 
@@ -640,7 +689,7 @@ public class RpcServer {
                 rpcContext.setLastHeartbeatTime(date);
             }
 
-            this.rpcContexts.put(client, rpcContext);
+            this.rpcContextContainer.put(client, rpcContext);
         }
 
         /**
@@ -649,7 +698,7 @@ public class RpcServer {
          * @return
          */
         public RpcContext getClientRpcContext(String client){
-            RpcContext rpcContext = this.rpcContexts.get(client);
+            RpcContext rpcContext = this.rpcContextContainer.getRpcContextByClient(client);
             return rpcContext;
         }
 
@@ -658,8 +707,8 @@ public class RpcServer {
          * @param client
          */
         private void removeClientRpcContext(String client){
-            if(this.rpcContexts.containsKey(client)){
-                this.rpcContexts.remove(client);
+            if(this.rpcContextContainer.containsClient(client)){
+                this.rpcContextContainer.removeByClient(client);
             }
         }
 
@@ -669,7 +718,7 @@ public class RpcServer {
          */
         public List<String> getActiveClients(){
             List<String> clients = new ArrayList<>();
-            for(Map.Entry<String, RpcContext> entry : rpcContexts.entrySet()){
+            for(Map.Entry<String, RpcContext> entry : rpcContextContainer.clientRpcContextEntrySet()){
                 String name = entry.getKey();
                 RpcContext context = entry.getValue();
 
@@ -686,16 +735,7 @@ public class RpcServer {
          * @return
          */
         public String getClientByContext(ChannelHandlerContext ctx){
-            Optional<String> opt = rpcContexts.entrySet().stream()
-                    .filter(c->ctx.equals(c.getValue().getContext()))
-                    .map(c->c.getKey())
-                    .findFirst();
-
-            String client = null;
-            if(opt.isPresent()) {
-                client = opt.get();
-            }
-
+            String client = rpcContextContainer.getClientByChannelContext(ctx);
             return client;
         }
 
@@ -748,4 +788,5 @@ public class RpcServer {
             logger.info("->> rpc request [{}] from [client:{}, ip:{}]", message.getType(), client, clientIp);
         }
     }
+
 }

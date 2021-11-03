@@ -1,6 +1,6 @@
 package com.airxiechao.axcboot.storage.cache.redis;
 
-import com.airxiechao.axcboot.storage.db.model.OrderType;
+import com.airxiechao.axcboot.storage.db.sql.model.OrderType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,8 +79,8 @@ public class RedisRangeSet {
             long pageStart = start;
             long pageEnd = end;
             if(null != pageNo && null != pageSize){
-                pageStart = start + pageNo * pageSize;
-                pageEnd = start + (pageNo + 1) * pageSize;
+                pageStart = start + (pageNo - 1) * pageSize;
+                pageEnd = start + pageNo * pageSize;
                 if(pageEnd > end){
                     pageEnd = end;
                 }
@@ -100,8 +100,8 @@ public class RedisRangeSet {
             long pageStart = start;
             long pageEnd = end;
             if(null != pageNo && null != pageSize){
-                pageStart = start + pageNo * pageSize;
-                pageEnd = start + (pageNo + 1) * pageSize;
+                pageStart = start + (pageNo - 1) * pageSize;
+                pageEnd = start + pageNo * pageSize;
                 if(pageEnd > end){
                     pageEnd = end;
                 }

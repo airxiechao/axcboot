@@ -28,7 +28,7 @@ public class RestTestServer {
             });
 
         restServer
-                .registerConsul(10)
+                .registerConsul(10, "")
                 .registerHandler(RestHandler.class)
                 .registerStatic("/", "html",
                         "index.html", "login.html");

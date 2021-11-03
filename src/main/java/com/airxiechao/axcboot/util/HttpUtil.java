@@ -1,10 +1,14 @@
 package com.airxiechao.axcboot.util;
 
+import com.airxiechao.axcboot.communication.common.FileData;
 import com.alibaba.fastjson.JSON;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Map;
@@ -46,9 +50,9 @@ public class HttpUtil {
                 .url(url)
                 .get();
 
-        Request request = requestBuilder.build();
-
         addHeaderAndCookie(requestBuilder, headers, cookies);
+
+        Request request = requestBuilder.build();
 
         try(Response response = client.newCall(request).execute()){
             String ret = response.body().string();
@@ -56,7 +60,7 @@ public class HttpUtil {
         }
     }
 
-    public static String postForm(
+    public static String postFormUrlEncoded(
             String path,
             Map<String, Object> params,
             Map<String, String> headers,
@@ -105,6 +109,56 @@ public class HttpUtil {
         }
     }
 
+    public static String postFormMultipart(
+            String path,
+            Map<String, Object> params,
+            Map<String, String> headers,
+            Map<String, String> cookies,
+            int timeout) throws Exception {
+
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(timeout, TimeUnit.SECONDS)
+                .writeTimeout(timeout, TimeUnit.SECONDS)
+                .readTimeout(timeout, TimeUnit.SECONDS)
+                .build();
+
+        MultipartBody.Builder multipartBuilder = new MultipartBody.Builder();
+        multipartBuilder.setType(MultipartBody.FORM);
+        if(null != params) {
+            params.forEach((name, value) -> {
+                if (null != value) {
+                    if(value instanceof File){
+                        File file = (File)value;
+                        multipartBuilder.addFormDataPart(name, file.getName(),
+                                RequestBody.create(file, MediaType.parse("application/octet-stream")));
+                    }else if(value instanceof FileData){
+                        FileData fileData = (FileData)value;
+                        File file = fileData.getFileItem().getFile().toFile();
+                        multipartBuilder.addFormDataPart(name, file.getName(),
+                                RequestBody.create(file, MediaType.parse("application/octet-stream")));
+                    }else{
+                        multipartBuilder.addFormDataPart(name, value.toString());
+                    }
+                }
+            });
+        }
+
+        RequestBody postBody = multipartBuilder.build();
+
+        Request.Builder requestBuilder = new Request.Builder()
+                .url(path)
+                .post(postBody);
+
+        addHeaderAndCookie(requestBuilder, headers, cookies);
+
+        Request request = requestBuilder.build();
+
+        try(Response response = client.newCall(request).execute()){
+            String ret = response.body().string();
+            return ret;
+        }
+    }
+
     public static String postJson(
             String path,
             Map<String, Object> params,
@@ -133,6 +187,51 @@ public class HttpUtil {
             String ret = response.body().string();
             return ret;
         }
+    }
+
+    public static boolean download(
+            String path,
+            Map<String, Object> params,
+            Map<String, String> headers,
+            Map<String, String> cookies,
+            int timeout,
+            OutputStream outputStream
+    ) throws Exception {
+
+        OkHttpClient client = new OkHttpClient.Builder()
+                .connectTimeout(timeout, TimeUnit.SECONDS)
+                .writeTimeout(timeout, TimeUnit.SECONDS)
+                .readTimeout(timeout, TimeUnit.SECONDS)
+                .build();
+
+        HttpUrl.Builder urlBuilder = HttpUrl.parse(path).newBuilder();
+
+        if(null != params){
+            params.forEach((name, value) -> {
+                if(null != value){
+                    urlBuilder.addQueryParameter(name, value.toString());
+                }
+            });
+        }
+
+        String url = urlBuilder.build().toString();
+        Request.Builder requestBuilder = new Request.Builder()
+                .url(url)
+                .get();
+
+        addHeaderAndCookie(requestBuilder, headers, cookies);
+
+        Request request = requestBuilder.build();
+
+        try(Response response = client.newCall(request).execute()){
+            if(!response.isSuccessful()){
+                return false;
+            }
+            InputStream inputStream = response.body().byteStream();
+            StreamUtil.readInputToOutputStream(inputStream, 1024, outputStream);
+        }
+
+        return true;
     }
 
     private static void addHeaderAndCookie(

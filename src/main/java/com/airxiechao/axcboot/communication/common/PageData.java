@@ -1,20 +1,20 @@
 package com.airxiechao.axcboot.communication.common;
 
-public class PageData {
+public class PageData<T> {
 
     private Integer pageNo;
     private Integer pageSize;
     private Long total;
-    private Object page;
+    private T page;
 
-    public PageData(Integer pageNo, Integer pageSize, Long total, Object page){
+    public PageData(Integer pageNo, Integer pageSize, Long total, T page){
         this.pageNo = pageNo;
         this.pageSize = pageSize;
         this.total = total;
         this.page = page;
     }
 
-    public PageData(PageParam pageParam, Long total, Object page){
+    public PageData(PageParam pageParam, Long total, T page){
         this.pageNo = pageParam.getPageNo();
         this.pageSize = pageParam.getPageSize();
         this.total = total;
@@ -45,11 +45,11 @@ public class PageData {
         this.total = total;
     }
 
-    public Object getPage() {
+    public T getPage() {
         return page;
     }
 
-    public void setPage(Object page) {
+    public void setPage(T page) {
         this.page = page;
     }
 }

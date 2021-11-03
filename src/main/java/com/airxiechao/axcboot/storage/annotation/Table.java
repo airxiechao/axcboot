@@ -13,6 +13,7 @@ public @interface Table {
     String datasourceMethod() default "";
     String primaryKeyMethod() default "BTREE";
     boolean primaryKeyAutoIncrement() default true;
+    int primaryKeyAutoIncrementBegin() default 1;
     String engine() default "InnoDB";
     String charset() default "utf8mb4";
     String collate() default "utf8mb4_general_ci";

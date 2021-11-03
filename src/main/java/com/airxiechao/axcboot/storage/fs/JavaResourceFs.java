@@ -1,12 +1,19 @@
 package com.airxiechao.axcboot.storage.fs;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.InputStream;
-import java.io.OutputStream;
+import com.airxiechao.axcboot.storage.fs.common.FsFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.*;
 import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 public class JavaResourceFs implements IFs {
+
+    private static final Logger logger = LoggerFactory.getLogger(JavaResourceFs.class);
 
     @Override
     public boolean mkdirs(String path) {
@@ -14,9 +21,15 @@ public class JavaResourceFs implements IFs {
     }
 
     @Override
-    public String[] list(String path) {
+    public List<FsFile> list(String path) {
+        File dir = getFile(".");
         File file = getFile(path);
-        return file.list();
+        List<FsFile> list = new ArrayList<>();
+        for (File f : file.listFiles()) {
+            Path relativePath = dir.toPath().relativize(f.toPath());
+            list.add(new FsFile(relativePath.toString(), f.getName(), f.isDirectory(), f.length()));
+        }
+        return list;
     }
 
     @Override
@@ -28,6 +41,16 @@ public class JavaResourceFs implements IFs {
 
     @Override
     public boolean remove(String path) {
+        return false;
+    }
+
+    @Override
+    public boolean move(String srcPath, String destPath) {
+        return false;
+    }
+
+    @Override
+    public boolean copy(String srcPath, String destPath) {
         return false;
     }
 

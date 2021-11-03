@@ -1,6 +1,6 @@
 package com.airxiechao.axcboot.storage.cache.db;
 
-import com.airxiechao.axcboot.storage.db.DbManager;
+import com.airxiechao.axcboot.storage.db.sql.DbManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

@@ -1,4 +1,4 @@
-package com.airxiechao.axcboot.storage.db;
+package com.airxiechao.axcboot.storage.db.sql;
 
 
 public interface DbTransaction {

@@ -1,7 +1,6 @@
-package com.airxiechao.axcboot.storage.db.util;
+package com.airxiechao.axcboot.storage.db.sql.util;
 
-import com.airxiechao.axcboot.storage.db.model.SqlParams;
-import com.airxiechao.axcboot.util.StringUtil;
+import com.airxiechao.axcboot.storage.db.sql.model.SqlParams;
 
 import java.util.*;
 
@@ -78,6 +77,7 @@ public class SqlParamsBuilder {
     private List<String> joins = new ArrayList<>();
     private List<SqlWhereTriple> wheres = new ArrayList<>();
     private List<SqlWhereTripleGroup> whereGroups = new ArrayList<>();
+    private String groupBy;
     private Integer pageNo;
     private Integer pageSize;
     private String orderField;
@@ -124,6 +124,12 @@ public class SqlParamsBuilder {
         return this;
     }
 
+    public SqlParamsBuilder groupBy(String groupBy){
+        this.groupBy = groupBy;
+
+        return this;
+    }
+
     public SqlParamsBuilder page(Integer pageNo, Integer pageSize){
         this.pageNo = pageNo;
         this.pageSize = pageSize;
@@ -158,7 +164,7 @@ public class SqlParamsBuilder {
         }
 
         // build from clause
-        String from = "from " + this.from + " " + String.join(", ", this.joins) + " ";
+        String from = "from " + this.from + " " + String.join(" ", this.joins) + " ";
 
         // build where clause
         StringBuilder sb = new StringBuilder();
@@ -201,10 +207,17 @@ public class SqlParamsBuilder {
         }
         String order = sb.toString();
 
+        // build groupby clause
+        sb = new StringBuilder();
+        if(null != this.groupBy){
+            sb.append(this.groupBy);
+        }
+        String groupBy = sb.toString();
+
         // build limit clause
         sb = new StringBuilder();
         if(!this.isCount && null != this.pageNo && null != this.pageSize){
-            sb.append("limit " + (this.pageNo*this.pageSize) + "," + this.pageSize);
+            sb.append("limit " + ((this.pageNo-1)*this.pageSize) + "," + this.pageSize);
         }
         String limit = sb.toString();
 
@@ -213,6 +226,7 @@ public class SqlParamsBuilder {
                 from +
                 where +
                 order +
+                groupBy +
                 limit;
 
         return new SqlParams(sql, params);

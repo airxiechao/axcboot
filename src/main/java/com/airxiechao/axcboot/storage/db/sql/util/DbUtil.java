@@ -1,4 +1,4 @@
-package com.airxiechao.axcboot.storage.db.util;
+package com.airxiechao.axcboot.storage.db.sql.util;
 
 import com.airxiechao.axcboot.storage.annotation.Column;
 import com.airxiechao.axcboot.storage.annotation.Index;
@@ -23,6 +23,8 @@ public class DbUtil {
             .put(long.class, "bigint")
             .put(String.class, "varchar")
             .put(Date.class, "datetime")
+            .put(Boolean.class, "tinyint")
+            .put(boolean.class, "tinyint")
             .build();
 
     private static Map<String, Integer> columnDefaultLengthMap = new MapBuilder<String, Integer>()
@@ -132,6 +134,7 @@ public class DbUtil {
         String tablePrimaryKeyColumn = "id";
         String tablePrimaryKeyMethod = table.primaryKeyMethod();
         boolean tablePrimaryKeyAutoIncrement = table.primaryKeyAutoIncrement();
+        int tablePrimaryKeyAutoIncrementBegin = table.primaryKeyAutoIncrementBegin();
 
         if(dropIfExists){
             pwTable.println(String.format("DROP TABLE IF EXISTS `%s`;", tableName));
@@ -197,8 +200,8 @@ public class DbUtil {
         String ddlColumn = swColumn.toString();
 
         pwTable.println(ddlColumn.substring(0, ddlColumn.lastIndexOf(",")));
-        pwTable.println(String.format(") ENGINE = %s AUTO_INCREMENT = 1 CHARACTER SET = %s COLLATE = %s ROW_FORMAT = %s;",
-                tableEngine, tableCharset, tableCollate, tableRowFormat));
+        pwTable.println(String.format(") ENGINE = %s AUTO_INCREMENT = %d CHARACTER SET = %s COLLATE = %s ROW_FORMAT = %s;",
+                tableEngine, tablePrimaryKeyAutoIncrementBegin, tableCharset, tableCollate, tableRowFormat));
 
         return swTable.toString();
     }

@@ -1,6 +1,6 @@
-package com.airxiechao.axcboot.storage.db;
+package com.airxiechao.axcboot.storage.db.sql;
 
-import com.airxiechao.axcboot.storage.db.model.DbProcess;
+import com.airxiechao.axcboot.storage.db.sql.model.DbProcess;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

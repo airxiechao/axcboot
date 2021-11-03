@@ -1,9 +1,7 @@
 package com.airxiechao.axcboot.communication.rest.server;
 
 import com.airxiechao.axcboot.communication.common.Response;
-import com.airxiechao.axcboot.communication.common.annotation.Auth;
-import com.airxiechao.axcboot.communication.common.annotation.Param;
-import com.airxiechao.axcboot.communication.common.annotation.Params;
+import com.airxiechao.axcboot.communication.common.annotation.*;
 import com.airxiechao.axcboot.communication.common.security.IAuthTokenChecker;
 import com.airxiechao.axcboot.communication.rest.annotation.*;
 import com.airxiechao.axcboot.communication.rest.healthcheck.HealthCheckRestHandler;
@@ -14,9 +12,12 @@ import com.airxiechao.axcboot.communication.websocket.annotation.WsEndpoint;
 import com.airxiechao.axcboot.communication.websocket.common.AbstractWsListener;
 import com.airxiechao.axcboot.communication.websocket.common.WsCallback;
 import com.airxiechao.axcboot.crypto.SslUtil;
+import com.airxiechao.axcboot.task.ITaskScheduler;
+import com.airxiechao.axcboot.task.TaskSchedulerManager;
 import com.airxiechao.axcboot.util.AnnotationUtil;
 import com.airxiechao.axcboot.util.MapBuilder;
 import com.airxiechao.axcboot.util.StringUtil;
+import com.airxiechao.axcboot.util.UuidUtil;
 import com.alibaba.fastjson.JSON;
 import com.ecwid.consul.v1.ConsulClient;
 import com.ecwid.consul.v1.agent.model.NewService;
@@ -43,6 +44,7 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import static io.undertow.Handlers.*;
@@ -54,7 +56,11 @@ public class RestServer {
     private static final Logger logger = LoggerFactory.getLogger(RestServer.class);
     private static final Logger accessLogger = LoggerFactory.getLogger("access");
 
+    private static final ITaskScheduler consulRegisterScheduleTask =
+            TaskSchedulerManager.getInstance().getTaskScheduler("consul-register", 1);
+
     protected String name;
+    protected String uuid;
     protected String ip;
     protected int port;
     protected String basePath;
@@ -65,10 +71,15 @@ public class RestServer {
 
     public RestServer(String name){
         this.name = name;
+        this.uuid = UuidUtil.random();
     }
 
     public String getName() {
         return name;
+    }
+
+    public String getUuid(){
+        return uuid;
     }
 
     public RestServer config(
@@ -130,6 +141,8 @@ public class RestServer {
 
     public void stop(){
         server.stop();
+        consulRegisterScheduleTask.shutdownGracefully();
+
         logger.info("rest-server-[{}] has stopped", this.name);
     }
 
@@ -183,30 +196,38 @@ public class RestServer {
         return this;
     }
 
-    public RestServer registerConsul(int ttl){
+    public RestServer registerConsul(int ttl, String namePrefix){
         this.registerHandler(HealthCheckRestHandler.class);
 
-        // register to consul
-        ConsulClient client = new ConsulClient("localhost");
-
-        NewService newService = new NewService();
-        newService.setName(this.name);
-        newService.setPort(this.port);
-        newService.setMeta(new MapBuilder()
-                .put("basePath", this.basePath)
-                .build());
-
-        NewService.Check serviceCheck = new NewService.Check();
-        serviceCheck.setHttp(
-                String.format("http://%s:%d%s%s",
-                        "localhost", this.port, this.basePath,
-                        RestUtil.getMethodPath(HealthCheckRestHandler.getHealthCheckMethod())));
-        serviceCheck.setInterval(ttl + "s");
-        newService.setCheck(serviceCheck);
-
-        client.agentServiceRegister(newService);
-
         logger.info("register consul service [{}]", this.name);
+
+        consulRegisterScheduleTask.schedulePeriodAfter(0, 1, TimeUnit.MINUTES, () -> {
+            try{
+                // register to consul
+                ConsulClient client = new ConsulClient("localhost");
+
+                NewService newService = new NewService();
+                newService.setName(namePrefix+this.name);
+                newService.setTags(Arrays.asList(this.uuid));
+                newService.setPort(this.port);
+                newService.setMeta(new MapBuilder()
+                        .put("basePath", this.basePath)
+                        .build());
+
+                NewService.Check serviceCheck = new NewService.Check();
+                serviceCheck.setHttp(
+                        String.format("http://%s:%d%s%s",
+                                "localhost", this.port, this.basePath,
+                                RestUtil.getMethodPath(HealthCheckRestHandler.getHealthCheckMethod())));
+                serviceCheck.setInterval(ttl + "s");
+                newService.setCheck(serviceCheck);
+
+                client.agentServiceRegister(newService);
+            }catch (Exception e){
+                logger.error("register consul service [{}] error", this.name, e);
+            }
+
+        });
 
         return this;
     }
@@ -283,6 +304,13 @@ public class RestServer {
                     }
 
                     if(null != ret){
+                        if(ret instanceof Response){
+                            Response resp = (Response)ret;
+                            if(!resp.isSuccess()){
+                                httpServerExchange.setStatusCode(500);
+                            }
+                        }
+
                         httpServerExchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
                         httpServerExchange.getResponseSender().send(JSON.toJSONString(ret));
                     }
@@ -308,7 +336,9 @@ public class RestServer {
                     httpServerExchange.getResponseHeaders().clear();
                     httpServerExchange.getResponseHeaders().put(Headers.CONTENT_TYPE, "application/json");
 
+                    httpServerExchange.setStatusCode(500);
                     httpServerExchange.getResponseSender().send(JSON.toJSONString(resp));
+
                 }
 
             }
@@ -379,48 +409,49 @@ public class RestServer {
 
     protected void checkParameter(Method method, HttpServerExchange httpServerExchange) throws Exception {
         Annotation[] methodAnnos = AnnotationUtil.getMethodAnnotations(method);
-        List<Param> params = new ArrayList<>();
+        List<String> requiredParams = new ArrayList<>();
         for(Annotation anno : methodAnnos){
             if(anno instanceof Params){
-                params.addAll(Arrays.asList(((Params) anno).value()));
+                Arrays.asList(((Params) anno).value()).forEach( param -> {
+                    if(param.required()){
+                        requiredParams.add(param.value());
+                    }
+                });
             }else if(anno instanceof Param){
                 Param param = (Param)anno;
-                params.add(param);
+                if(param.required()){
+                    requiredParams.add(param.value());
+                }
             }
         }
 
         Map<String, Deque<String>> queryParam = httpServerExchange.getQueryParameters();
         FormData formData = httpServerExchange.getAttachment(FormDataParser.FORM_DATA);
 
-        for(Param param : params){
-            String name = param.value();
-            boolean required = param.required();
-
-
-            if(required){
-                Deque<String> dv = queryParam.get(name);
-                boolean queryExisted = null != dv && null != dv.getFirst() && !dv.getFirst().isBlank();
-                boolean formExisted = false;
-                if(null != formData && null != formData.get(name) &&
-                        null != formData.get(name).getFirst()){
-                    if(formData.get(name).getFirst().isFileItem()){
-                        // is file
-                        if(null != formData.get(name).getFirst().getFileItem()){
-                            formExisted = true;
-                        }
-                    }else{
-                        // not file
-                        if(null != formData.get(name).getFirst().getValue() &&
-                                !formData.get(name).getFirst().getValue().isBlank()){
-                            formExisted = true;
-                        }
+        for(String name : requiredParams){
+            Deque<String> dv = queryParam.get(name);
+            boolean queryExisted = null != dv && null != dv.getFirst() && !dv.getFirst().isBlank();
+            boolean formExisted = false;
+            if(null != formData && null != formData.get(name) &&
+                    null != formData.get(name).getFirst()){
+                if(formData.get(name).getFirst().isFileItem()){
+                    // is file
+                    if(null != formData.get(name).getFirst().getFileItem()){
+                        formExisted = true;
+                    }
+                }else{
+                    // not file
+                    if(null != formData.get(name).getFirst().getValue() &&
+                            !formData.get(name).getFirst().getValue().isBlank()){
+                        formExisted = true;
                     }
                 }
-
-                if(!queryExisted && !formExisted){
-                    throw new Exception("parameter [" + name + "] is required");
-                }
             }
+
+            if(!queryExisted && !formExisted){
+                throw new Exception("parameter [" + name + "] is required");
+            }
+
         }
     }
 
@@ -536,7 +567,9 @@ public class RestServer {
                         Response resp = new Response();
                         resp.error("not found");
 
+                        httpServerExchange.setStatusCode(500);
                         httpServerExchange.getResponseSender().send(JSON.toJSONString(resp));
+
                         return true;
                     }
                 });

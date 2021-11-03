@@ -1,7 +1,8 @@
 package com.airxiechao.axcboot.util;
 
-import com.airxiechao.axcboot.storage.db.util.DbUtil;
+import com.airxiechao.axcboot.storage.db.sql.util.DbUtil;
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import net.sf.cglib.beans.BeanCopier;
 
 import java.lang.reflect.Field;
@@ -19,6 +20,17 @@ public class ModelUtil {
 
     public static <T> T deepCopy(T orig, Class<T> cls){
         return JSON.parseObject(JSON.toJSONString(orig), cls);
+    }
+
+    public static <T> T fromMap(Map map, Class<T> cls){
+        JSONObject json = new JSONObject(map);
+        return json.toJavaObject(cls);
+    }
+
+    public static <T> T fromMapAndCheckRequiredField(Map map, Class<T> cls) {
+        T obj = fromMap(map, cls);
+        ClsUtil.checkRequiredField(obj);
+        return obj;
     }
 
     public static <T> T fromMap(Map map, Class<T> cls, boolean underscoreToCamelCase) throws Exception {
@@ -57,6 +69,36 @@ public class ModelUtil {
         }
 
         return obj;
+    }
+
+    public static Map<String, Object> toMap(Object obj){
+        return (JSONObject)JSON.toJSON(obj);
+    }
+
+    public static Map<String, Object> toMapAndCheckRequiredField(Object obj){
+        ClsUtil.checkRequiredField(obj);
+        return (JSONObject)JSON.toJSON(obj);
+    }
+
+    public static Map<String, String> toStringMap(Object obj){
+        Map<String, String> stringMap = new HashMap<>();
+        JSONObject jsonObject = (JSONObject)JSON.toJSON(obj);
+        jsonObject.entrySet().forEach(entry -> {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+            if(null != value){
+                stringMap.put(key, value.toString());
+            }else{
+                stringMap.put(key, "");
+            }
+        });
+
+        return stringMap;
+    }
+
+    public static Map<String, String> toStringMapAndCheckRequiredField(Object obj){
+        ClsUtil.checkRequiredField(obj);
+        return toStringMap(obj);
     }
 
     public static <T> Map<String, T> toMap(Object obj, boolean camelCaseToUnderscore) {

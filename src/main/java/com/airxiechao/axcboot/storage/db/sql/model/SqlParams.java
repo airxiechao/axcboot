@@ -1,4 +1,4 @@
-package com.airxiechao.axcboot.storage.db.model;
+package com.airxiechao.axcboot.storage.db.sql.model;
 
 import java.util.Map;
 

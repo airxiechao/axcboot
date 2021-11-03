@@ -20,7 +20,7 @@ public class AnnotationUtil {
         return annotationList.stream().toArray(Annotation[]::new);
     }
 
-    public static <T extends Annotation> T getClassAnnotations(Class cls, Class<T> annotationClass) {
+    public static <T extends Annotation> T getClassAnnotation(Class cls, Class<T> annotationClass) {
         T annotation = (T)cls.getAnnotation(annotationClass);
         if(null != annotation){
             return annotation;

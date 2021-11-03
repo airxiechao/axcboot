@@ -37,7 +37,7 @@ public class RedisListTable {
         }else{
             List<String> list =  Arrays.asList(value.split(LIST_DELIMITER));
             if(null != pageNo && null != pageSize){
-                list = list.stream().skip(pageNo*pageSize).limit(pageSize).collect(Collectors.toList());
+                list = list.stream().skip((pageNo-1)*pageSize).limit(pageSize).collect(Collectors.toList());
             }
             return list;
         }

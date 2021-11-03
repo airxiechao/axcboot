@@ -14,7 +14,13 @@ public class StreamUtil {
         try(Reader logReader = new InputStreamReader(inputStream, charset)){
             char[] buffer = new char[bufferSize];
             while(true){
-                int num = logReader.read(buffer);
+                int num = -1;
+                try{
+                    num = logReader.read(buffer);
+                }catch (IOException e){
+
+                }
+
                 if(num < 0){
                     break;
                 }
@@ -31,7 +37,12 @@ public class StreamUtil {
         try(Reader logReader = new InputStreamReader(inputStream, charset)){
             char[] buffer = new char[bufferSize];
             while(true){
-                int num = logReader.read(buffer);
+                int num = -1;
+                try{
+                    num = logReader.read(buffer);
+                }catch (IOException e){
+
+                }
                 if(num < 0){
                     break;
                 }
