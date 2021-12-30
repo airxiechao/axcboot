@@ -1,4 +1,4 @@
-package com.airxiechao.axcboot.storage.db.util;
+package com.airxiechao.axcboot.storage.db.sql.util;
 
 import com.airxiechao.axcboot.storage.annotation.Column;
 import com.airxiechao.axcboot.storage.annotation.Index;
@@ -23,6 +23,8 @@ public class DbUtil {
             .put(long.class, "bigint")
             .put(String.class, "varchar")
             .put(Date.class, "datetime")
+            .put(Boolean.class, "tinyint")
+            .put(boolean.class, "tinyint")
             .build();
 
     private static Map<String, Integer> columnDefaultLengthMap = new MapBuilder<String, Integer>()
@@ -30,6 +32,9 @@ public class DbUtil {
             .put("bigint", 20)
             .put("varchar", 50)
             .put("datetime", 0)
+            .put("text", -1)
+            .put("mediumtext", -1)
+            .put("longtext", -1)
             .build();
 
     public static String table(Class<?> tClass){
@@ -84,7 +89,7 @@ public class DbUtil {
         Column column = field.getAnnotation(Column.class);
         if(null != column){
             int columnLength = column.length();
-            if(columnLength > 0){
+            if(columnLength != 0){
                 return columnLength;
             }
         }
@@ -132,6 +137,7 @@ public class DbUtil {
         String tablePrimaryKeyColumn = "id";
         String tablePrimaryKeyMethod = table.primaryKeyMethod();
         boolean tablePrimaryKeyAutoIncrement = table.primaryKeyAutoIncrement();
+        int tablePrimaryKeyAutoIncrementBegin = table.primaryKeyAutoIncrementBegin();
 
         if(dropIfExists){
             pwTable.println(String.format("DROP TABLE IF EXISTS `%s`;", tableName));
@@ -156,14 +162,21 @@ public class DbUtil {
             boolean columnNotNull = columnNotNull(field);
             String columnDefaultValue = columnDefaultValue(field);
 
+            String columnTypeAndLength;
+            if(columnLength >= 0){
+                columnTypeAndLength = String.format("%s(%d)", columnType, columnLength);
+            }else{
+                columnTypeAndLength = columnType;
+            }
+
             if(columnName.equals(tablePrimaryKeyColumn)){
                 pwColumn.print(padding);
-                pwColumn.println(String.format("`%s` %s(%s) NOT NULL %s,",
-                        columnName, columnType, columnLength, tablePrimaryKeyAutoIncrement ? "AUTO_INCREMENT" : ""));
+                pwColumn.println(String.format("`%s` %s NOT NULL %s,",
+                        columnName, columnTypeAndLength, tablePrimaryKeyAutoIncrement ? "AUTO_INCREMENT" : ""));
             } else {
                 pwColumn.print(padding);
-                pwColumn.println(String.format("`%s` %s(%d) %sNULL DEFAULT %s,",
-                        columnName, columnType, columnLength, columnNotNull ? "NOT " : "", columnDefaultValue));
+                pwColumn.println(String.format("`%s` %s %sNULL DEFAULT %s,",
+                        columnName, columnTypeAndLength, columnNotNull ? "NOT " : "", columnDefaultValue));
             }
 
         }
@@ -197,8 +210,8 @@ public class DbUtil {
         String ddlColumn = swColumn.toString();
 
         pwTable.println(ddlColumn.substring(0, ddlColumn.lastIndexOf(",")));
-        pwTable.println(String.format(") ENGINE = %s AUTO_INCREMENT = 1 CHARACTER SET = %s COLLATE = %s ROW_FORMAT = %s;",
-                tableEngine, tableCharset, tableCollate, tableRowFormat));
+        pwTable.println(String.format(") ENGINE = %s AUTO_INCREMENT = %d CHARACTER SET = %s COLLATE = %s ROW_FORMAT = %s;",
+                tableEngine, tablePrimaryKeyAutoIncrementBegin, tableCharset, tableCollate, tableRowFormat));
 
         return swTable.toString();
     }

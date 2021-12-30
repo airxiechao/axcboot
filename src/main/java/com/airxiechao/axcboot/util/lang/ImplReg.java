@@ -4,6 +4,7 @@ import com.airxiechao.axcboot.util.ProxyUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -24,7 +25,9 @@ public class ImplReg {
      */
     public <T> void registerImpl(Class<T> interfaceCls, Class<? extends T> implCls){
         try {
-            T impl = implCls.getConstructor().newInstance();
+            Constructor<? extends T> constructor = implCls.getDeclaredConstructor();
+            constructor.setAccessible(true);
+            T impl = constructor.newInstance();
             registerImpl(interfaceCls, impl);
         } catch (Exception e){
             logger.error("register implementation error", e);

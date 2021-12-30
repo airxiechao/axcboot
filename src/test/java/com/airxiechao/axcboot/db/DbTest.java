@@ -1,7 +1,7 @@
 package com.airxiechao.axcboot.db;
 
 import com.airxiechao.axcboot.storage.annotation.Table;
-import com.airxiechao.axcboot.storage.db.DbManager;
+import com.airxiechao.axcboot.storage.db.sql.DbManager;
 
 public class DbTest {
 

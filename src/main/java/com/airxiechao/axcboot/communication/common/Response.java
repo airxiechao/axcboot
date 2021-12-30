@@ -2,7 +2,7 @@ package com.airxiechao.axcboot.communication.common;
 
 import com.alibaba.fastjson.annotation.JSONField;
 
-public class Response {
+public class Response<T> {
 
     public static final String CODE_OK = "0";
     public static final String CODE_ERROR = "-1";
@@ -10,46 +10,46 @@ public class Response {
 
     private String code;
     private String message;
-    private Object data;
+    private T data;
 
     public Response(){
         this.code = CODE_OK;
     }
 
-    public Response success(){
+    public Response<T> success(){
         code = CODE_OK;
         return this;
     }
 
-    public Response success(String message){
+    public Response<T> success(String message){
         this.code = CODE_OK;
         this.message = message;
         return this;
     }
 
-    public Response error(){
+    public Response<T> error(){
         code = CODE_ERROR;
         return this;
     }
 
-    public Response error(String message){
+    public Response<T> error(String message){
         this.code = CODE_ERROR;
         this.message = message;
         return this;
     }
 
-    public Response authError(){
+    public Response<T> authError(){
         code = CODE_AUTH_ERROR;
         return this;
     }
 
-    public Response authError(String message){
+    public Response<T> authError(String message){
         this.code = CODE_AUTH_ERROR;
         this.message = message;
         return this;
     }
 
-    public Response data(Object data){
+    public Response<T> data(T data){
         this.data = data;
         return this;
     }
@@ -70,11 +70,11 @@ public class Response {
         this.message = message;
     }
 
-    public Object getData() {
+    public T getData() {
         return data;
     }
 
-    public void setData(Object data) {
+    public void setData(T data) {
         this.data = data;
     }
 

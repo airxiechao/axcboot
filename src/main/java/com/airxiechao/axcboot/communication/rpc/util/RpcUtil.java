@@ -5,10 +5,14 @@ import com.airxiechao.axcboot.communication.common.annotation.Param;
 import com.airxiechao.axcboot.communication.common.annotation.Params;
 import com.airxiechao.axcboot.communication.common.security.IAuthTokenChecker;
 import com.airxiechao.axcboot.communication.rpc.common.IRpcMessageHandler;
+import com.airxiechao.axcboot.communication.rpc.common.RpcExchange;
 import com.airxiechao.axcboot.communication.rpc.server.RpcServer;
+import com.airxiechao.axcboot.util.ModelUtil;
+import com.airxiechao.axcboot.util.ClsUtil;
 import com.airxiechao.axcboot.util.StringUtil;
 import com.airxiechao.axcboot.util.TimeUtil;
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.lang.annotation.Annotation;
@@ -56,7 +60,8 @@ public class RpcUtil {
      */
     public static Method getHandleMethod(Class<? extends IRpcMessageHandler> cls) {
         try {
-            return cls.getMethod("handle", ChannelHandlerContext.class, Map.class);
+            Method method = IRpcMessageHandler.class.getDeclaredMethods()[0];
+            return cls.getMethod(method.getName(), method.getParameterTypes());
         } catch (NoSuchMethodException e) {
             return null;
         }
@@ -64,17 +69,11 @@ public class RpcUtil {
 
     /**
      * 检查参数
-     * @param handler
-     * @param queryParams
+     * @param method
      * @throws Exception
      */
-    public static void checkParameter(IRpcMessageHandler handler, Map<String, Object> queryParams) throws Exception {
-        Method mothod = getHandleMethod(handler.getClass());
-        if(null == mothod){
-            throw new Exception("no handle method");
-        }
-
-        Annotation[] methodAnnos = mothod.getAnnotations();
+    public static void checkParameter(Method method, Map<String, Object> queryParams) throws Exception {
+        Annotation[] methodAnnos = method.getAnnotations();
         List<Param> params = new ArrayList<>();
         for(Annotation anno : methodAnnos){
             if(anno instanceof Params){
@@ -118,21 +117,16 @@ public class RpcUtil {
         return authToken;
     }
 
+    public static String getAuthToken(RpcExchange rpcExchange){
+        return getAuthToken(rpcExchange.getPayload());
+    }
+
     /**
      * 检查权限
-     * @param handler
-     * @param ctx
-     * @param queryParams
-     * @param rpcAuthChecker
+     * @param method
      * @throws Exception
      */
-    public static void checkAuth(IRpcMessageHandler handler, ChannelHandlerContext ctx, Map<String, Object> queryParams, IAuthTokenChecker rpcAuthChecker) throws Exception {
-
-        Method method = getHandleMethod(handler.getClass());
-        if(null == method){
-            throw new Exception("no handle method");
-        }
-
+    public static void checkAuth(Method method, ChannelHandlerContext ctx, Map<String, Object> queryParams, IAuthTokenChecker rpcAuthChecker) throws Exception {
         Auth auth = method.getAnnotation(Auth.class);
         if(null == auth){
             return;
@@ -208,5 +202,11 @@ public class RpcUtil {
             value = defaultValue;
         }
         return value;
+    }
+
+    public static <T> T getObjectParam(RpcExchange rpcExchange, Class<T> cls){
+        T obj = ModelUtil.fromMap(rpcExchange.getPayload(), cls);
+        ClsUtil.checkRequiredField(obj);
+        return obj;
     }
 }

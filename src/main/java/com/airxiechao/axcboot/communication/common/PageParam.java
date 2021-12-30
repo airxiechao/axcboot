@@ -7,6 +7,10 @@ public class PageParam{
     private String orderField;
     private String orderType;
 
+    public PageParam(){
+
+    }
+
     public PageParam(Integer pageNo, Integer pageSize, String orderField, String orderType){
         this.pageNo = pageNo;
         this.pageSize = pageSize;

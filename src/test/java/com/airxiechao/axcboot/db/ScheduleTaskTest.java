@@ -1,15 +1,15 @@
 package com.airxiechao.axcboot.db;
 
-import com.airxiechao.axcboot.task.ScheduleTask;
-import com.airxiechao.axcboot.task.ScheduleTaskManager;
+import com.airxiechao.axcboot.task.ITaskScheduler;
+import com.airxiechao.axcboot.task.TaskSchedulerManager;
 
 import java.util.concurrent.TimeUnit;
 
 public class ScheduleTaskTest {
 
     public static void main(String[] args) throws InterruptedException {
-        ScheduleTask scheduleTask = ScheduleTaskManager.getInstance().getScheduleTask("scheduler", 1);
-        scheduleTask.shceduleEveryPeriod(1, TimeUnit.SECONDS, ()->{
+        ITaskScheduler scheduleTask = TaskSchedulerManager.getInstance().getTaskScheduler("scheduler", 1);
+        scheduleTask.schedulePeriodAfter(0, 1, TimeUnit.SECONDS, ()->{
             System.out.println("task run");
         });
 

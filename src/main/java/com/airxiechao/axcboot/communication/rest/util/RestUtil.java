@@ -1,10 +1,13 @@
 package com.airxiechao.axcboot.communication.rest.util;
 
+import com.airxiechao.axcboot.communication.common.FileData;
 import com.airxiechao.axcboot.communication.common.PageParam;
+import com.airxiechao.axcboot.communication.common.annotation.Required;
 import com.airxiechao.axcboot.communication.rest.annotation.Delete;
 import com.airxiechao.axcboot.communication.rest.annotation.Get;
 import com.airxiechao.axcboot.communication.rest.annotation.Post;
 import com.airxiechao.axcboot.communication.rest.security.*;
+import com.airxiechao.axcboot.util.ClsUtil;
 import com.airxiechao.axcboot.util.StringUtil;
 import com.airxiechao.axcboot.util.TimeUtil;
 import com.alibaba.fastjson.JSON;
@@ -24,6 +27,7 @@ import io.undertow.websockets.spi.WebSocketHttpExchange;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URLEncoder;
 import java.nio.file.Path;
@@ -43,6 +47,47 @@ public class RestUtil {
         });
 
         return map;
+    }
+
+    public static JSONObject queryJsonData(HttpServerExchange exchange) {
+        Map params = allQueryStringParam(exchange);
+        JSONObject jsonObject = new JSONObject(params);
+        return jsonObject;
+    }
+
+    public static <T> T queryData(HttpServerExchange exchange, Class<T> tClass) {
+        JSONObject jsonObject = queryJsonData(exchange);
+        T obj = jsonObject.toJavaObject(tClass);
+        ClsUtil.checkRequiredField(obj);
+        return obj;
+    }
+
+    public static Map<String, String>  allQueryWsStringParam(WebSocketHttpExchange exchange){
+        Map<String, String> map = new HashMap<>();
+
+        exchange.getRequestParameters().forEach((name, values) -> {
+            if(null != values && values.size() > 0){
+                String param = values.get(0);
+                if(!StringUtil.isBlank(param)) {
+                    map.put(name, param);
+                }
+            }
+        });
+
+        return map;
+    }
+
+    public static JSONObject queryWsJsonData(WebSocketHttpExchange exchange) {
+        Map params = allQueryWsStringParam(exchange);
+        JSONObject jsonObject = new JSONObject(params);
+        return jsonObject;
+    }
+
+    public static <T> T queryWsData(WebSocketHttpExchange exchange, Class<T> tClass) {
+        JSONObject jsonObject = queryWsJsonData(exchange);
+        T obj = jsonObject.toJavaObject(tClass);
+        ClsUtil.checkRequiredField(obj);
+        return obj;
     }
 
     public static String queryWsStringParam(WebSocketHttpExchange exchange, String name){
@@ -156,12 +201,15 @@ public class RestUtil {
 
     public static <T> T rawJsonData(HttpServerExchange exchange, Class<T> tClass) {
         String jsonString = rawStringData(exchange);
-        return JSON.parseObject(jsonString, tClass);
+        T obj = JSON.parseObject(jsonString, tClass);
+        ClsUtil.checkRequiredField(obj);
+        return obj;
     }
 
     public static JSONObject rawJsonData(HttpServerExchange exchange) {
         String jsonString = rawStringData(exchange);
-        return JSON.parseObject(jsonString);
+        JSONObject jsonObject = JSON.parseObject(jsonString);
+        return jsonObject;
     }
 
     public static Map<String, String> allFormStringData(HttpServerExchange exchange){
@@ -180,6 +228,40 @@ public class RestUtil {
         }
 
         return map;
+    }
+
+    public static Map<String, Object> allFormData(HttpServerExchange exchange){
+        Map<String, Object> map = new HashMap<>();
+
+        FormData formData = exchange.getAttachment(FormDataParser.FORM_DATA);
+        if(null != formData){
+            for(String name : formData){
+                if(null != formData.get(name) && null != formData.get(name).getFirst()){
+                    FormData.FormValue formValue = formData.get(name).getFirst();
+                    if(formValue.isFileItem()) {
+                        String fileName = formValue.getFileName();
+                        FormData.FileItem fileItem = formValue.getFileItem();
+                        FileData fileData = new FileData(fileName, fileItem);
+                        map.put(name, fileData);
+                    }else{
+                        String stringValue = formValue.getValue();
+                        if(null != stringValue && !stringValue.isBlank()){
+                            map.put(name, stringValue);
+                        }
+                    }
+                }
+            }
+        }
+
+        return map;
+    }
+
+    public static <T> T formData(HttpServerExchange exchange, Class<T> tClass) {
+        Map<String, Object> formData = RestUtil.allFormData(exchange);
+        JSONObject jsonObject = new JSONObject(formData);
+        T obj = jsonObject.toJavaObject(tClass);
+        ClsUtil.checkRequiredField(obj);
+        return obj;
     }
 
     public static String formStringData(HttpServerExchange exchange, String name){
@@ -287,6 +369,11 @@ public class RestUtil {
         }
     }
 
+    public static String getHeader(HttpServerExchange exchange, String name){
+        String value = exchange.getRequestHeaders().getFirst(name);
+        return value;
+    }
+
     public static String getAuthToken(HttpServerExchange exchange){
         String token = null;
 
@@ -306,6 +393,11 @@ public class RestUtil {
         }
 
         return token;
+    }
+
+    public static String getWsHeader(WebSocketHttpExchange exchange, String name){
+        String value = exchange.getRequestHeader(name);
+        return value;
     }
 
     public static String getWsAuthToken(WebSocketHttpExchange exchange){

@@ -1,10 +1,11 @@
-package com.airxiechao.axcboot.storage.db;
+package com.airxiechao.axcboot.storage.db.sql;
 
 import com.airxiechao.axcboot.storage.annotation.Table;
-import com.airxiechao.axcboot.storage.db.model.SqlParams;
+import com.airxiechao.axcboot.storage.db.sql.model.SqlParams;
 import com.airxiechao.axcboot.storage.fs.IFs;
 import com.airxiechao.axcboot.storage.fs.JavaResourceFs;
 import com.airxiechao.axcboot.util.StringUtil;
+import com.airxiechao.axcboot.util.ModelUtil;
 import com.alibaba.fastjson.JSON;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
@@ -31,6 +32,8 @@ public class DbManager {
 
     private static final String DEFAULT_DATASOURCE = "default";
 
+    private IFs configFs;
+    private String configFilePath;
     private Map<String, SqlSessionFactory> sqlSessionFactoryMap = new HashMap<>();
 
     public DbManager(){
@@ -38,12 +41,19 @@ public class DbManager {
     }
 
     public DbManager(IFs configFs, String configFilePath) {
+        this.configFs = configFs;
+        this.configFilePath = configFilePath;
+
+        config();
+    }
+
+    private void config() {
         List<String> envIds;
         try (InputStream inputStream = configFs.getInputStream(configFilePath)){
             envIds = parseEnvironmentIds(inputStream);
         }catch (Exception e){
-            logger.error("db manager parse environment ids error.", e);
-            return;
+            logger.error("db manager init environment [{}] error.", configFilePath, e);
+            throw new RuntimeException(e);
         }
 
         // default datasource
@@ -53,7 +63,7 @@ public class DbManager {
             sqlSessionFactoryMap.put(DEFAULT_DATASOURCE, defaultSqlSessionFactory);
         }catch (Exception e){
             logger.error("db manager init default datasource error.", e);
-            return;
+            throw new RuntimeException(e);
         }
 
         // named datasource
@@ -64,6 +74,7 @@ public class DbManager {
                 sqlSessionFactoryMap.put(envId, sqlSessionFactory);
             }catch (Exception e){
                 logger.error("db manager init datasource [{}] error.", envId, e);
+                throw new RuntimeException(e);
             }
         }
     }
@@ -101,6 +112,10 @@ public class DbManager {
 
     private SqlSessionFactory getSqlSessionFactory(String datasource){
         SqlSessionFactory sqlSessionFactory = null;
+        if(sqlSessionFactoryMap.size() == 0){
+            throw new RuntimeException("sql session factory is empty");
+        }
+
         if(!StringUtil.isBlank(datasource)){
             sqlSessionFactory = sqlSessionFactoryMap.get(datasource);
         }
@@ -124,12 +139,30 @@ public class DbManager {
             if(!StringUtil.isBlank(datasource)){
                 return datasource;
             }
+        }
+
+        return datasource;
+    }
+
+    private String getDatasource(Class<?> tClass, Object datasourceMethodParam){
+        String datasource = null;
+
+        if(null == tClass){
+            return datasource;
+        }
+
+        Table table = tClass.getAnnotation(Table.class);
+        if(null != table){
+            datasource = table.datasource();
+            if(!StringUtil.isBlank(datasource)){
+                return datasource;
+            }
 
             String datasourceMethod = table.datasourceMethod();
             if(!StringUtil.isBlank(datasourceMethod)){
                 try {
                     Method method = tClass.getMethod(datasourceMethod);
-                    datasource = (String)method.invoke(null);
+                    datasource = (String)method.invoke(null, datasourceMethodParam);
                     return datasource;
                 } catch (Exception e) {
                     logger.error("call datasourceMethod {}.{} error", tClass.getName(), datasourceMethod);
@@ -154,6 +187,11 @@ public class DbManager {
 
     public <T> boolean executeTransaction(DbTransaction transaction, Class<T> tClass){
         String datasource = getDatasource(tClass);
+        return executeTransaction(transaction, datasource);
+    }
+
+    public <T> boolean executeTransaction(DbTransaction transaction, Class<T> tClass, Object datasourceMethodParam){
+        String datasource = getDatasource(tClass, datasourceMethodParam);
         return executeTransaction(transaction, datasource);
     }
 
@@ -197,7 +235,17 @@ public class DbManager {
         try(SqlSession session = openSession(datasource)){
             DbMapper mapper = session.getMapper(DbMapper.class);
             Map map = mapper.selectById(id, tClass);
-            T ret = JSON.parseObject(JSON.toJSONString(map), tClass);
+            T ret = ModelUtil.fromMap(map, tClass);
+            return ret;
+        }
+    }
+
+    public <T> T getById(long id, Class<T> tClass, Object datasourceMethodParam){
+        String datasource = getDatasource(tClass, datasourceMethodParam);
+        try(SqlSession session = openSession(datasource)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            Map map = mapper.selectById(id, tClass);
+            T ret = ModelUtil.fromMap(map, tClass);
             return ret;
         }
     }
@@ -222,6 +270,11 @@ public class DbManager {
         return selectBySql(sql, params, tClass, datasource);
     }
 
+    public <T> List<T> selectBySql(String sql, Map params, Class<T> tClass, Object datasourceMethodParam){
+        String datasource = getDatasource(tClass, datasourceMethodParam);
+        return selectBySql(sql, params, tClass, datasource);
+    }
+
     public <T> List<T> selectBySql(SqlParams sqlParams, Class<T> tClass){
         return selectBySql(sqlParams.getSql(), sqlParams.getParams(), tClass);
     }
@@ -233,7 +286,7 @@ public class DbManager {
 
             List<T> ret = new ArrayList<>();
             for(Map map : list){
-                T t = JSON.parseObject(JSON.toJSONString(map), tClass);
+                T t = ModelUtil.fromMap(map, tClass);
                 ret.add(t);
             }
 
@@ -295,6 +348,14 @@ public class DbManager {
         }
     }
 
+    public Long longBySql(String sql, Map params, Class<?> tClass, Object datasourceMethodParam){
+        String datasource = getDatasource(tClass, datasourceMethodParam);
+        try(SqlSession session = openSession(datasource)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            return mapper.longBySql(sql, params);
+        }
+    }
+
     public Long longBySql(SqlParams sqlParams, Class<?> tClass){
         return longBySql(sqlParams.getSql(), sqlParams.getParams(), tClass);
     }
@@ -324,6 +385,14 @@ public class DbManager {
         }
     }
 
+    public Double doubleBySql(String sql, Map params, Class<?> tClass, Object datasourceMethodParam){
+        String datasource = getDatasource(tClass, datasourceMethodParam);
+        try(SqlSession session = openSession(datasource)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            return mapper.doubleBySql(sql, params);
+        }
+    }
+
     public Double doubleBySql(SqlParams sqlParams, Class<?> tClass){
         return doubleBySql(sqlParams.getSql(), sqlParams.getParams(), tClass);
     }
@@ -343,8 +412,26 @@ public class DbManager {
         }
     }
 
+    public int insert(Object object, Object datasourceMethodParam){
+        String datasource = getDatasource(object.getClass(), datasourceMethodParam);
+        try(SqlSession session = openSession(datasource, true)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            int ret = mapper.insert(object);
+            return ret;
+        }
+    }
+
     public int insertWithId(Object object){
         String datasource = getDatasource(object.getClass());
+        try(SqlSession session = openSession(datasource, true)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            int ret = mapper.insertWithId(object);
+            return ret;
+        }
+    }
+
+    public int insertWithId(Object object, Object datasourceMethodParam){
+        String datasource = getDatasource(object.getClass(), datasourceMethodParam);
         try(SqlSession session = openSession(datasource, true)){
             DbMapper mapper = session.getMapper(DbMapper.class);
             int ret = mapper.insertWithId(object);
@@ -371,6 +458,20 @@ public class DbManager {
         }
     }
 
+    public int insertBatch(List<?> list, Object datasourceMethodParam){
+        Class tClass = Object.class;
+        if(list.size() > 0){
+            tClass = list.get(0).getClass();
+        }
+        String datasource = getDatasource(tClass, datasourceMethodParam);
+
+        try(SqlSession session = openSession(datasource, true)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            int ret = mapper.insertBatch(list);
+            return ret;
+        }
+    }
+
     /**
      * 插入或更新
      * @param object
@@ -385,8 +486,26 @@ public class DbManager {
         }
     }
 
+    public int insertOrUpdate(Object object, Object datasourceMethodParam){
+        String datasource = getDatasource(object.getClass(), datasourceMethodParam);
+        try(SqlSession session = openSession(datasource, true)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            int ret = mapper.insertOrUpdate(object);
+            return ret;
+        }
+    }
+
     public int insertOrUpdateWithId(Object object){
         String datasource = getDatasource(object.getClass());
+        try(SqlSession session = openSession(datasource, true)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            int ret = mapper.insertOrUpdateWithId(object);
+            return ret;
+        }
+    }
+
+    public int insertOrUpdateWithId(Object object, Object datasourceMethodParam){
+        String datasource = getDatasource(object.getClass(), datasourceMethodParam);
         try(SqlSession session = openSession(datasource, true)){
             DbMapper mapper = session.getMapper(DbMapper.class);
             int ret = mapper.insertOrUpdateWithId(object);
@@ -408,6 +527,20 @@ public class DbManager {
         }
     }
 
+    public int insertOrUpdateBatch(List<?> list, Object datasourceMethodParam){
+        Class tClass = Object.class;
+        if(list.size() > 0){
+            tClass = list.get(0).getClass();
+        }
+        String datasource = getDatasource(tClass, datasourceMethodParam);
+
+        try(SqlSession session = openSession(datasource, true)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            int ret = mapper.insertOrUpdateBatch(list);
+            return ret;
+        }
+    }
+
     public int insertOrUpdateBatch(List<?> list, int batchSize) {
 
         Class tClass = Object.class;
@@ -415,6 +548,37 @@ public class DbManager {
             tClass = list.get(0).getClass();
         }
         String datasource = getDatasource(tClass);
+
+        try (SqlSession session = openSession(datasource, true)) {
+            DbMapper mapper = session.getMapper(DbMapper.class);
+
+            int ret = 0;
+            List<Object> sub = new ArrayList<>();
+            for(Object object : list){
+                sub.add(object);
+
+                if(sub.size() == batchSize){
+                    ret += mapper.insertOrUpdateBatch(sub);
+                    sub.clear();
+                }
+            }
+
+            if(sub.size() > 0){
+                ret += mapper.insertOrUpdateBatch(sub);
+                sub.clear();
+            }
+
+            return ret;
+        }
+    }
+
+    public int insertOrUpdateBatch(List<?> list, int batchSize, Object datasourceMethodParam) {
+
+        Class tClass = Object.class;
+        if(list.size() > 0){
+            tClass = list.get(0).getClass();
+        }
+        String datasource = getDatasource(tClass, datasourceMethodParam);
 
         try (SqlSession session = openSession(datasource, true)) {
             DbMapper mapper = session.getMapper(DbMapper.class);
@@ -470,6 +634,37 @@ public class DbManager {
         }
     }
 
+    public int insertOrUpdateWithIdBatch(List<?> list, int batchSize, Object datasourceMethodParam) {
+
+        Class tClass = Object.class;
+        if(list.size() > 0){
+            tClass = list.get(0).getClass();
+        }
+        String datasource = getDatasource(tClass, datasourceMethodParam);
+
+        try (SqlSession session = openSession(datasource, true)) {
+            DbMapper mapper = session.getMapper(DbMapper.class);
+
+            int ret = 0;
+            List<Object> sub = new ArrayList<>();
+            for(Object object : list){
+                sub.add(object);
+
+                if(sub.size() == batchSize){
+                    ret += mapper.insertOrUpdateWithIdBatch(sub);
+                    sub.clear();
+                }
+            }
+
+            if(sub.size() > 0){
+                ret += mapper.insertOrUpdateWithIdBatch(sub);
+                sub.clear();
+            }
+
+            return ret;
+        }
+    }
+
     /**
      * 更新对象
      * @param object
@@ -477,6 +672,15 @@ public class DbManager {
      */
     public int update(Object object){
         String datasource = getDatasource(object.getClass());
+        try(SqlSession session = openSession(datasource, true)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            int ret = mapper.update(object);
+            return ret;
+        }
+    }
+
+    public int update(Object object, Object datasourceMethodParam){
+        String datasource = getDatasource(object.getClass(), datasourceMethodParam);
         try(SqlSession session = openSession(datasource, true)){
             DbMapper mapper = session.getMapper(DbMapper.class);
             int ret = mapper.update(object);
@@ -510,6 +714,15 @@ public class DbManager {
         }
     }
 
+    public int updateBySql(String sql, Map params, Class<?> tClass, Object datasourceMethodParam){
+        String datasource = getDatasource(tClass, datasourceMethodParam);
+        try(SqlSession session = openSession(datasource,true)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            int ret = mapper.updateBySql(sql, params);
+            return ret;
+        }
+    }
+
     public int updateBySql(SqlParams sqlParams, Class<?> tClass) {
         return updateBySql(sqlParams.getSql(), sqlParams.getParams(), tClass);
     }
@@ -522,6 +735,15 @@ public class DbManager {
      */
     public int deleteById(long id, Class<?> tClass){
         String datasource = getDatasource(tClass);
+        try(SqlSession session = openSession(datasource, true)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            int ret = mapper.deleteById(id, tClass);
+            return ret;
+        }
+    }
+
+    public int deleteById(long id, Class<?> tClass, Object datasourceMethodParam){
+        String datasource = getDatasource(tClass, datasourceMethodParam);
         try(SqlSession session = openSession(datasource, true)){
             DbMapper mapper = session.getMapper(DbMapper.class);
             int ret = mapper.deleteById(id, tClass);
@@ -552,6 +774,15 @@ public class DbManager {
 
     public int deleteBySql(String sql, Map params, Class<?> tClass){
         String datasource = getDatasource(tClass);
+        try(SqlSession session = openSession(datasource, true)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            int ret = mapper.deleteBySql(sql, params);
+            return ret;
+        }
+    }
+
+    public int deleteBySql(String sql, Map params, Class<?> tClass, Object datasourceMethodParam){
+        String datasource = getDatasource(tClass, datasourceMethodParam);
         try(SqlSession session = openSession(datasource, true)){
             DbMapper mapper = session.getMapper(DbMapper.class);
             int ret = mapper.deleteBySql(sql, params);
@@ -590,8 +821,18 @@ public class DbManager {
         return executeBySql(sql, params, datasource);
     }
 
+    public int executeBySql(String sql, Map params, Class<?> tClass, Object datasourceMethodParam){
+        String datasource = getDatasource(tClass, datasourceMethodParam);
+        return executeBySql(sql, params, datasource);
+    }
+
     public int executeBySql(SqlParams sqlParams, Class<?> tClass){
         String datasource = getDatasource(tClass);
+        return executeBySql(sqlParams, datasource);
+    }
+
+    public int executeBySql(SqlParams sqlParams, Class<?> tClass, Object datasourceMethodParam){
+        String datasource = getDatasource(tClass, datasourceMethodParam);
         return executeBySql(sqlParams, datasource);
     }
 

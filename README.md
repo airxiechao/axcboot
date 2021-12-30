@@ -11,40 +11,51 @@ a collection of java backend components
 </dependency>
 ```
 
-## Sub-projects
-
-- axcdevops: remote run devops commands [https://github.com/airxiechao/axcdevops]
-
 ## Communication
 
 - rpc 远程通信
 
 ```java
 import com.airxiechao.axcboot.communication.common.Response;
+import com.airxiechao.axcboot.communication.common.annotation.Query;
 import com.airxiechao.axcboot.communication.rpc.client.RpcClient;
+import com.airxiechao.axcboot.communication.rpc.common.RpcExchange;
 import com.airxiechao.axcboot.communication.rpc.server.RpcServer;
-
-import java.util.HashMap;
-import java.util.Map;
+import com.airxiechao.axcboot.communication.rpc.util.RpcUtil;
+import com.airxiechao.axcboot.core.annotation.IRpc;
+import com.airxiechao.axcboot.core.rpc.RpcClientCaller;
+import com.airxiechao.axcboot.core.rpc.RpcReg;
+import com.airxiechao.axcboot.core.rpc.RpcServerCaller;
+import com.airxiechao.axcboot.crypto.SslUtil;
+import com.airxiechao.axcboot.storage.fs.LocalFs;
+import io.netty.handler.ssl.util.SelfSignedCertificate;
 
 public class RpcTestServer
 {
-    public static void main( String[] args )
-    {
+    public static void main( String[] args ) throws Exception {
+        SelfSignedCertificate ssc = new SelfSignedCertificate();
+
         RpcServer server = new RpcServer("server1")
-                .config("127.0.0.1", 8888, 2, 16, 10, null);
+                //.setVerboseLog(true)
+                .config("127.0.0.1", 8888, 2, 16, null, null, null)
+                .useSsl(SslUtil.buildKeyManagerFactory(new LocalFs("d:/test/ssl"), "rpc-server-key.jks", "123456"),
+                        SslUtil.buildReloadableTrustManager(new LocalFs("d:/test/ssl"), "rpc-server-trust.jks", "123456"));
 
+//        server.registerRpcHandler("add", (ctx, payload) -> {
+//
+//            Response resp = new Response();
+//            resp.success();
+//            resp.setData((Integer)payload.get("a") + (Integer)payload.get("b"));
+//
+//            return resp;
+//        });
 
-        server.registerRpcHandler("add", (ctx, payload) -> {
-
-            Response resp = new Response();
-            resp.success();
-            resp.setData((Integer)payload.get("a") + (Integer)payload.get("b"));
-
-            return resp;
-        });
+        RpcReg rpcReg = new RpcReg("com.airxiechao.axcboot", server);
+        rpcReg.registerHandlerIfExists(null);
 
         server.syncStart();
+
+        RpcServerCaller caller = new RpcServerCaller(server);
 
         //for(int i = 0; i < 10; ++i){
         while (true){
@@ -55,12 +66,14 @@ public class RpcTestServer
                 e.printStackTrace();
             }
 
-            Map map = new HashMap();
-            map.put("a", 1);
-            map.put("b", 2);
+            AddParam param = new AddParam();
+            param.setA(1);
+            param.setB(2);
             try{
-                Response ret = server.callClient("client1", "add2", map);
-                System.out.println(ret.getCode()+", "+ret.getMessage()+", "+ret.getData());
+                if(server.getActiveClients().size() > 0) {
+                    Response ret = caller.get(IAddRpc.class, server.getActiveClients().get(0)).add2(param);
+                    System.out.println(ret.getCode() + ", " + ret.getMessage() + ", " + ret.getData());
+                }
             }catch (Exception e){
                 System.out.println(e.getMessage());
             }
@@ -71,21 +84,32 @@ public class RpcTestServer
     }
 }
 
-class Client{
-    public static void main( String[] args ){
+class RpcTestClient{
+    public static void main( String[] args ) throws Exception {
+        SelfSignedCertificate ssc = new SelfSignedCertificate();
+
         RpcClient client = new RpcClient("client1")
-                .config("127.0.0.1", 8888, 16, 1, 10, null);
+                //.setVerboseLog(true)
+                .config("127.0.0.1", 8888, 16, 10,
+                        null, null, null)
+                .useSsl(SslUtil.buildKeyManagerFactory(new LocalFs("d:/test/ssl"), "rpc-client-key.jks", "123456"),
+                        SslUtil.buildReloadableTrustManager(new LocalFs("d:/test/ssl"), "rpc-client-trust.jks", "123456"));
 
-        client.registerRpcHandler("add2", (ctx, payload) -> {
+//        client.registerRpcHandler("add2", (ctx, payload) -> {
+//
+//            Response resp = new Response();
+//            resp.success();
+//            resp.setData((Integer)payload.get("a") + (Integer)payload.get("b") + 2);
+//
+//            return resp;
+//        });
 
-            Response resp = new Response();
-            resp.success();
-            resp.setData((Integer)payload.get("a") + (Integer)payload.get("b") + 2);
+        RpcReg rpcReg = new RpcReg("com.airxiechao.axcboot", client);
+        rpcReg.registerHandlerIfExists(null);
 
-            return resp;
-        });
         client.syncStart();
 
+        RpcClientCaller caller = new RpcClientCaller(client);
 
         //for(int i = 0; i < 2; ++i){
         while(true) {
@@ -97,11 +121,11 @@ class Client{
                 e.printStackTrace();
             }
 
-            Map map = new HashMap();
-            map.put("a", 1);
-            map.put("b", 2);
+            AddParam param = new AddParam();
+            param.setA(1);
+            param.setB(2);
             try{
-                Response ret = client.callServer("add", map);
+                Response ret = caller.get(IAddRpc.class).add(param);
                 System.out.println(ret.getCode()+", "+ret.getMessage()+", "+ret.getData());
             }catch (Exception e){
 
@@ -109,6 +133,55 @@ class Client{
         }
 
         //client.syncStop();
+    }
+}
+
+@IRpc
+interface IAddRpc {
+
+    @Query("add")
+    Response add(Object param);
+
+    @Query("add2")
+    Response add2(Object param);
+}
+
+class AddParam{
+    private Integer a;
+    private Integer b;
+
+    public Integer getA() {
+        return a;
+    }
+
+    public void setA(Integer a) {
+        this.a = a;
+    }
+
+    public Integer getB() {
+        return b;
+    }
+
+    public void setB(Integer b) {
+        this.b = b;
+    }
+}
+
+class AddRpcHandler implements IAddRpc {
+
+    @Override
+    public Response add(Object param) {
+        RpcExchange rpcExchange = (RpcExchange) param;
+        AddParam addParam = RpcUtil.getObjectParam(rpcExchange, AddParam.class);
+        return new Response().data(addParam.getA() + addParam.getB());
+    }
+
+    @Override
+    public Response add2(Object param) {
+
+        RpcExchange rpcExchange = (RpcExchange) param;
+        AddParam addParam = RpcUtil.getObjectParam(rpcExchange, AddParam.class);
+        return new Response().data(addParam.getA() + addParam.getB() + 2);
     }
 }
 ```
@@ -209,10 +282,8 @@ public class PubSubTest {
 
 ```java
 import com.airxiechao.axcboot.communication.common.Response;
-import com.airxiechao.axcboot.communication.common.annotation.Params;
 import com.airxiechao.axcboot.communication.rest.annotation.Get;
 import com.airxiechao.axcboot.communication.common.annotation.Param;
-import com.airxiechao.axcboot.communication.rest.security.AuthPrincipal;
 import com.airxiechao.axcboot.communication.rest.server.RestServer;
 import com.airxiechao.axcboot.communication.rest.util.RestUtil;
 import com.airxiechao.axcboot.util.AnnotationUtil;
@@ -222,7 +293,6 @@ import com.airxiechao.axcboot.util.ProxyUtil;
 import com.alibaba.fastjson.JSON;
 import io.undertow.server.HttpServerExchange;
 
-import java.util.HashMap;
 import java.util.Map;
 
 public class RestTestServer {
@@ -230,9 +300,9 @@ public class RestTestServer {
     public static void main(String[] args) throws InterruptedException {
         RestServer restServer = new RestServer("test");
         restServer.config("0.0.0.0", 80, null, null, null,
-            (exchange, principal, roles) -> {
-                return false;
-            });
+                (exchange, principal, roles) -> {
+                    return false;
+                });
 
         restServer
                 .registerHandler(RestHandler.class)
@@ -265,31 +335,31 @@ interface Add {
     Response add(Object exc);
 }
 
-class RestHandler implements Add{
+class RestHandler implements Add {
 
     @Override
     public Response add(Object exc) {
 
-        HttpServerExchange exchange = (HttpServerExchange)exc;
+        HttpServerExchange exchange = (HttpServerExchange) exc;
 
         Integer a = RestUtil.queryIntegerParam(exchange, "a");
         Integer b = RestUtil.queryIntegerParam(exchange, "b");
 
         Response resp = new Response();
         resp.success();
-        resp.setData(a+b);
+        resp.setData(a + b);
 
         return resp;
     }
 }
 
 class RestClient {
-    public static <T> T get(Class<T> cls){
+    public static <T> T get(Class<T> cls) {
         return ProxyUtil.buildProxy(cls, (proxy, method, args) -> {
             String path = AnnotationUtil.getMethodAnnotation(method, Get.class).value();
-            Map params = (Map)args[0];
+            Map params = (Map) args[0];
 
-            String ret = HttpUtil.get("http://127.0.0.1/api"+path, params);
+            String ret = HttpUtil.get("http://127.0.0.1/api" + path, params);
             return JSON.parseObject(ret, Response.class);
         });
     }
@@ -368,7 +438,7 @@ ws.onclose = function(){
 ```java
 
 import com.airxiechao.axcboot.storage.annotation.Table;
-import com.airxiechao.axcboot.storage.db.DbManager;
+import com.airxiechao.axcboot.storage.db.sql.DbManager;
 
 public class DbTest {
 
@@ -398,7 +468,7 @@ public class DbTest {
     @Table(value = "y", datasourceMethod = "getDatasource")
     public static class Y {
 
-        public static String getDatasource(){
+        public static String getDatasource() {
             return "datasource2";
         }
 
@@ -422,7 +492,7 @@ public class DbTest {
         }
     }
 
-    public static void main(String[] args){
+    public static void main(String[] args) {
         X x = new X();
         x.setValue("111");
 

@@ -2,8 +2,10 @@ package com.airxiechao.axcboot.util;
 
 import java.io.*;
 import java.nio.charset.Charset;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class StreamUtil {
 
@@ -14,7 +16,13 @@ public class StreamUtil {
         try(Reader logReader = new InputStreamReader(inputStream, charset)){
             char[] buffer = new char[bufferSize];
             while(true){
-                int num = logReader.read(buffer);
+                int num = -1;
+                try{
+                    num = logReader.read(buffer);
+                }catch (IOException e){
+
+                }
+
                 if(num < 0){
                     break;
                 }
@@ -31,7 +39,12 @@ public class StreamUtil {
         try(Reader logReader = new InputStreamReader(inputStream, charset)){
             char[] buffer = new char[bufferSize];
             while(true){
-                int num = logReader.read(buffer);
+                int num = -1;
+                try{
+                    num = logReader.read(buffer);
+                }catch (IOException e){
+
+                }
                 if(num < 0){
                     break;
                 }
@@ -44,6 +57,37 @@ public class StreamUtil {
                 if(ret != true){
                     break;
                 }
+            }
+        }
+    }
+
+    public static void readStringInputStreamNoneBlocking(InputStream inputStream, int bufferSize, Charset charset, Function<String, Boolean> consumer) throws Exception {
+        while(true){
+            int num = -1;
+            byte[] buffer = null;
+            try{
+                int available = inputStream.available();
+                if(available > 0){
+                    buffer = inputStream.readNBytes(Math.min(available, bufferSize));
+                    num = buffer.length;
+                }else{
+                    num = 0;
+                }
+            }catch (IOException e){
+
+            }
+            if(num < 0){
+                break;
+            }
+
+            String str = "";
+            if(num > 0) {
+                str = new String(buffer, charset);
+            }
+
+            Boolean ret = consumer.apply(str);
+            if(ret != true){
+                break;
             }
         }
     }
@@ -67,6 +111,51 @@ public class StreamUtil {
         }
 
         outputStream.flush();
+    }
+
+    public static void readInputToOutputStream(InputStream inputStream, int bufferSize, OutputStream outputStream,
+                                               BiConsumer<Long, Long> totalAndSpeedConsumer, Supplier<Boolean> stopSupplier) throws Exception {
+        long total = 0;
+        long speed = 0;
+
+        long num = 0;
+        long tick = System.currentTimeMillis();
+
+        byte[] buffer = new byte[bufferSize];
+        while(true){
+            if(null != stopSupplier && stopSupplier.get()){
+                break;
+            }
+
+            int nowNum = inputStream.read(buffer);
+            if(nowNum < 0){
+                break;
+            }
+
+            outputStream.write(buffer, 0, nowNum);
+
+            total += nowNum;
+            num += nowNum;
+            long nowTick = System.currentTimeMillis();
+            if (nowTick >= tick + 1000) {
+                long diffTick = nowTick - tick;
+                speed = num * 1000 / diffTick;
+
+                if(null != totalAndSpeedConsumer) {
+                    totalAndSpeedConsumer.accept(total, speed);
+                }
+
+                num = 0;
+                tick = nowTick;
+            }
+        }
+
+        outputStream.flush();
+
+        if(null != totalAndSpeedConsumer) {
+            totalAndSpeedConsumer.accept(total, speed);
+        }
+
     }
 
     /**

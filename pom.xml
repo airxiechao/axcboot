@@ -6,7 +6,7 @@
 
     <groupId>io.github.airxiechao</groupId>
     <artifactId>axcboot</artifactId>
-    <version>0.40-SNAPSHOT</version>
+    <version>0.40</version>
 
     <name>axcboot</name>
     <url>https://github.com/airxiechao/axcboot</url>
@@ -42,9 +42,16 @@
     </properties>
 
     <dependencies>
+        <!-- slf4j bound to log4j2 -->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j-impl</artifactId>
+            <version>2.14.1</version>
+        </dependency>
+        <!-- commons-logging bound to log4j2-->
+        <dependency>
+            <groupId>org.apache.logging.log4j</groupId>
+            <artifactId>log4j-jcl</artifactId>
             <version>2.14.1</version>
         </dependency>
         <dependency>
@@ -114,6 +121,11 @@
             <version>1.13</version>
         </dependency>
         <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.11.0</version>
+        </dependency>
+        <dependency>
             <groupId>com.squareup.okhttp3</groupId>
             <artifactId>okhttp</artifactId>
             <version>4.7.2</version>
@@ -137,6 +149,26 @@
             <groupId>com.rabbitmq</groupId>
             <artifactId>amqp-client</artifactId>
             <version>5.12.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.28</version>
+        </dependency>
+        <dependency>
+            <groupId>org.mongodb</groupId>
+            <artifactId>mongodb-driver-sync</artifactId>
+            <version>4.3.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.quartz-scheduler</groupId>
+            <artifactId>quartz</artifactId>
+            <version>2.3.2</version>
+        </dependency>
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <version>8.3.0</version>
         </dependency>
 
         <dependency>
@@ -260,6 +292,36 @@
                     </plugin>
                     -->
 
+                    <plugin>
+                        <groupId>io.github.git-commit-id</groupId>
+                        <artifactId>git-commit-id-maven-plugin</artifactId>
+                        <version>5.0.0</version>
+                        <executions>
+                            <execution>
+                                <id>add-git-info</id>
+                                <goals>
+                                    <goal>revision</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <dotGitDirectory>${project.basedir}/.git</dotGitDirectory>
+                            <prefix>git</prefix>
+                            <verbose>false</verbose>
+                            <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                            <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+                            <format>json</format>
+                            <gitDescribe>
+                                <skip>false</skip>
+                                <always>false</always>
+                                <dirty>-dirty</dirty>
+                            </gitDescribe>
+                            <includeOnlyProperties>
+                                <includeOnlyProperty>^git.build.(time|version)$</includeOnlyProperty>
+                                <includeOnlyProperty>^git.commit.id(.abbrev)?$</includeOnlyProperty>
+                            </includeOnlyProperties>
+                        </configuration>
+                    </plugin>
                 </plugins>
             </build>
             <distributionManagement>

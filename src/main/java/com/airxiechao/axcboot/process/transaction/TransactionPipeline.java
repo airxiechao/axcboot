@@ -25,16 +25,18 @@ public class TransactionPipeline {
         this.uuid = UUID.randomUUID().toString();
     }
 
-    public void addStep(
+    public TransactionPipeline addStep(
             String stepName,
             TransactionRunnable forwardRunnable,
             TransactionRunnable rollbackRunnable){
         stepName = (steps.size()+1) + "_" + stepName;
         TransactionStep step = new TransactionStep(stepName, tranStore, retStore, forwardRunnable, rollbackRunnable);
         steps.add(step);
+
+        return this;
     }
 
-    public Response execute(){
+    public Response<Map> execute(){
         Logger tlog = TraceLogger.wrap(logger);
         tlog.info("transaction [{}, {}] begin...", name, uuid);
         Stack<TransactionStep> stack = new Stack<>();
@@ -77,7 +79,7 @@ public class TransactionPipeline {
 
         tlog.info("transaction [{}, {}] finish [{}].", name, uuid, success);
 
-        Response resp = new Response();
+        Response<Map> resp = new Response();
         if(success){
             resp.success();
             resp.setData(retStore);

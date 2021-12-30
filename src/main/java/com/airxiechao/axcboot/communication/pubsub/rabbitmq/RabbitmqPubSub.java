@@ -13,6 +13,7 @@ import com.rabbitmq.client.DeliverCallback;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -50,13 +51,14 @@ public class RabbitmqPubSub implements IPubSub {
 
     @Override
     public Response publish(String event, Map<String, Object> params) {
-        try{
-            Channel channel = getSubscriberChannel(event, "publisher");
+        try( Channel channel = getPublisherChannel() ){
+            String[] tokens = event.split("\\.");
+            String exchangeName = tokens[0];
+            String routingKey = event.substring(exchangeName.length() + 1);
 
-            String exchangeName = event.split("\\.")[0];
             channel.exchangeDeclare(exchangeName, "topic");
             String message = JSON.toJSONString(params);
-            channel.basicPublish(exchangeName, event, null, message.getBytes("UTF-8"));
+            channel.basicPublish(exchangeName, routingKey, null, message.getBytes("UTF-8"));
             return new Response();
         }catch (Exception e){
             return new Response().error(e.getMessage());
@@ -69,11 +71,14 @@ public class RabbitmqPubSub implements IPubSub {
         try{
             Channel channel = getSubscriberChannel(event, subscriber);
 
-            String exchangeName = event.split("\\.")[0];
+            String[] tokens = event.split("\\.");
+            String exchangeName = tokens[0];
+            String routingKey = event.substring(exchangeName.length() + 1);
+
             channel.exchangeDeclare(exchangeName, "topic");
-            String queueName = buildSubscriberQueueName(event, subscriber);
-            channel.queueDeclare(queueName, false, true, true, null);
-            channel.queueBind(queueName, exchangeName, event);
+            String queueName = event + ":" + subscriber;
+            channel.queueDeclare(queueName, false, false, true, null);
+            channel.queueBind(queueName, exchangeName, routingKey);
 
             DeliverCallback deliverCallback = (consumerTag, delivery) -> {
                 String message = new String(delivery.getBody(), "UTF-8");
@@ -86,6 +91,7 @@ public class RabbitmqPubSub implements IPubSub {
                 }
             };
             channel.basicConsume(queueName, true, deliverCallback, consumerTag -> { });
+
         }catch (Exception e){
             logger.error("rabbitmq subscribe error", e);
         }
@@ -174,8 +180,13 @@ public class RabbitmqPubSub implements IPubSub {
         subscriberChannelMap.clear();
     }
 
-    private String buildSubscriberQueueName(String event, String subscriber){
-        return event + ":" + subscriber;
+    private Channel getPublisherChannel(){
+        try {
+            Channel channel = getConnection().createChannel();
+            return channel;
+        } catch (Exception e) {
+            throw new RuntimeException("rabbitmq create publisher channel error", e);
+        }
     }
 
     private Channel getSubscriberChannel(String event, String subscriber){

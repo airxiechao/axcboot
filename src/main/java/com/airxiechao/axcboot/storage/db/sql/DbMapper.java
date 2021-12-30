@@ -1,4 +1,4 @@
-package com.airxiechao.axcboot.storage.db;
+package com.airxiechao.axcboot.storage.db.sql;
 
 import org.apache.ibatis.annotations.*;
 

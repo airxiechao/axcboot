@@ -8,11 +8,10 @@ import com.airxiechao.axcboot.communication.rest.util.RestUtil;
 import com.airxiechao.axcboot.crypto.SslUtil;
 import com.airxiechao.axcboot.storage.fs.LocalFs;
 import com.airxiechao.axcboot.util.*;
+import com.airxiechao.axcboot.util.HttpUtil;
 import com.alibaba.fastjson.JSON;
 import io.undertow.server.HttpServerExchange;
 
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
 import java.util.Map;
 
 public class RestTestServer {
@@ -28,7 +27,7 @@ public class RestTestServer {
             });
 
         restServer
-                .registerConsul(10)
+                .registerConsul(10, "")
                 .registerHandler(RestHandler.class)
                 .registerStatic("/", "html",
                         "index.html", "login.html");
@@ -83,7 +82,7 @@ class RestClient {
             String path = AnnotationUtil.getMethodAnnotation(method, Get.class).value();
             Map params = (Map)args[0];
 
-            String ret = HttpUtil.get("http://127.0.0.1/api"+path, params, null, null, 10);
+            String ret = HttpUtil.get("http://127.0.0.1/api"+path, params, null, null, 10, false);
             return JSON.parseObject(ret, Response.class);
         });
     }
@@ -93,7 +92,7 @@ class RestClient {
             String path = AnnotationUtil.getMethodAnnotation(method, Get.class).value();
             Map params = (Map)args[0];
 
-            String ret = HttpsUtil.get("https://127.0.0.1:443/api"+path, params, null, null, 10);
+            String ret = HttpUtil.get("https://127.0.0.1:443/api"+path, params, null, null, 10, true);
             return JSON.parseObject(ret, Response.class);
         });
     }

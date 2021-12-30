@@ -5,7 +5,9 @@ import com.airxiechao.axcboot.communication.common.Response;
 import com.airxiechao.axcboot.communication.common.annotation.Query;
 import com.airxiechao.axcboot.communication.common.security.IAuthTokenChecker;
 import com.airxiechao.axcboot.communication.rpc.common.*;
+import com.airxiechao.axcboot.communication.rpc.server.RpcServer;
 import com.airxiechao.axcboot.communication.rpc.util.RpcUtil;
+import com.airxiechao.axcboot.util.AnnotationUtil;
 import com.alibaba.fastjson.JSON;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import io.netty.bootstrap.Bootstrap;
@@ -309,26 +311,54 @@ public class RpcClient {
 
     /**
      * 注册rpc请求处理器
-     * @param type
      * @param handler
+     * @param type
+     * @param method
      * @return
      */
-    public RpcClient registerRpcHandler(String type, IRpcMessageHandler handler){
-        serviceHandlers.put(type, handler);
+    public RpcClient registerRpcHandler(Object handler, String type, Method method){
+        method.setAccessible(true);
+        if(method.getDeclaringClass() != handler.getClass()){
+            logger.error("register rpc handler error: method not belong to handler");
+            return this;
+        }
+
+        serviceHandlers.put(type, (rpcExchange) -> {
+            try{
+                ChannelHandlerContext ctx = rpcExchange.getCtx();
+                Map<String, Object> payload = rpcExchange.getPayload();
+
+                RpcUtil.checkAuth(method, ctx, payload, authTokenChecker);
+                RpcUtil.checkParameter(method, payload);
+                return (Response)method.invoke(handler, new RpcExchange(ctx, payload));
+            }catch (Exception e){
+                logger.error("handle rpc service [{}] error",type, e);
+                return new Response().error(e.getMessage());
+            }
+
+        });
+
         return this;
+    }
+
+    public RpcClient registerRpcHandler(Object handler, Method method){
+        method.setAccessible(true);
+        Query query = AnnotationUtil.getMethodAnnotation(method, Query.class);
+        if (null == query) {
+            logger.error("register rpc handler error: no type");
+            return this;
+        }
+
+        String type = query.value();
+
+        return registerRpcHandler(handler, type, method);
     }
 
     public RpcClient registerRpcHandler(IRpcMessageHandler handler){
         try{
             Method method = RpcUtil.getHandleMethod(handler.getClass());
             if(null != method){
-                Query query = method.getAnnotation(Query.class);
-                if(null != query){
-                    String type = query.value();
-                    serviceHandlers.put(type, handler);
-                }else{
-                    logger.error("register rpc handler error: no type");
-                }
+                registerRpcHandler(handler, method);
             }else{
                 logger.error("register rpc handler error: no handle method");
             }
@@ -340,22 +370,26 @@ public class RpcClient {
         return this;
     }
 
-    public RpcClient registerRpcHandler(Class<? extends IRpcMessageHandler> cls){
+    public RpcClient registerRpcHandler(String type, IRpcMessageHandler handler){
         try{
-            Method method = RpcUtil.getHandleMethod(cls);
+            Method method = RpcUtil.getHandleMethod(handler.getClass());
             if(null != method){
-                Query query = method.getAnnotation(Query.class);
-                if(null != query){
-                    String type = query.value();
-                    serviceHandlers.put(type, cls.getConstructor().newInstance());
-                }else{
-                    logger.error("register rpc handler error: no type");
-                }
+                registerRpcHandler(handler, type, method);
             }else{
                 logger.error("register rpc handler error: no handle method");
             }
 
         }catch (Exception e){
+
+        }
+
+        return this;
+    }
+
+    public RpcClient registerRpcHandler(Class<? extends IRpcMessageHandler> cls){
+        try {
+            registerRpcHandler(cls.getConstructor().newInstance());
+        } catch (Exception e) {
             logger.error("register rpc handler error", e);
         }
 
@@ -398,8 +432,13 @@ public class RpcClient {
                 resp = future.get();
             }
 
+            if(!resp.isSuccess()){
+                logger.error("rpc call server type [{}] error: {}", type, resp.getMessage());
+            }
+
             return resp;
         }catch (Exception e) {
+            logger.error("rpc call server type [{}] error", type, e);
             throw new RpcException(e);
         }
     }
@@ -565,10 +604,7 @@ public class RpcClient {
                 try {
                     String payload = message.getPayload();
                     Map payloadMap = JSON.parseObject(payload, Map.class);
-
-                    RpcUtil.checkAuth(handler, ctx, payloadMap, authTokenChecker);
-                    RpcUtil.checkParameter(handler, payloadMap);
-                    response = handler.handle(ctx, payloadMap);
+                    response = handler.handle(new RpcExchange(ctx, payloadMap));
                 }catch (Exception e){
                     logger.error("handle rpc service [{}] error", message.getType(), e);
 

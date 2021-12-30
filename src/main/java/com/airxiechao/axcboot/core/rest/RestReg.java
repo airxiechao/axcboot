@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 public class RestReg {
 
@@ -44,22 +45,24 @@ public class RestReg {
 
     public void registerHandlerIfExists(){
         Set<Class<?>> rest = ClsUtil.getTypesAnnotatedWith(this.pkg, IRest.class);
-        for(Class cls : rest){
-            if(cls.isInterface()){
-                if(null != this.exclusion){
-                    if(Arrays.stream(this.exclusion).anyMatch(e -> e == cls)){
-                        continue;
-                    }
-                }
+        Set<Class<?>> interfaceSet = rest.stream().filter( cls -> cls.isInterface()).collect(Collectors.toSet());
+        Set<Class<?>> implSet = rest.stream().filter( cls -> !cls.isInterface()).collect(Collectors.toSet());
 
-                Set<Class> set = ClsUtil.getSubTypesOf(this.pkg, cls);
-                if(set.size() > 0){
-                    Class impl = set.stream().findFirst().get();
-                    logger.info("register rest: {}", impl);
-                    restServer.registerHandler(impl);
-                    this.afterRegisterHandler(impl, restServer);
+        for(Class cls : interfaceSet){
+            if(null != this.exclusion){
+                if(Arrays.stream(this.exclusion).anyMatch(e -> e == cls)){
+                    continue;
                 }
             }
+
+            Set<Class<?>> set = ClsUtil.getSubTypesOf(implSet, cls);
+            if(set.size() > 0){
+                Class impl = set.stream().findFirst().get();
+                logger.info("register rest: {}", impl);
+                restServer.registerHandler(impl);
+                this.afterRegisterHandler(impl, restServer);
+            }
+
         }
     }
 
