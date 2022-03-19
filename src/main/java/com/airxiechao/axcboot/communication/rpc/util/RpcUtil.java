@@ -9,6 +9,7 @@ import com.airxiechao.axcboot.communication.rpc.common.RpcExchange;
 import com.airxiechao.axcboot.communication.rpc.server.RpcServer;
 import com.airxiechao.axcboot.util.ModelUtil;
 import com.airxiechao.axcboot.util.ClsUtil;
+import com.airxiechao.axcboot.util.AnnotationUtil;
 import com.airxiechao.axcboot.util.StringUtil;
 import com.airxiechao.axcboot.util.TimeUtil;
 import com.alibaba.fastjson.JSON;
@@ -73,7 +74,7 @@ public class RpcUtil {
      * @throws Exception
      */
     public static void checkParameter(Method method, Map<String, Object> queryParams) throws Exception {
-        Annotation[] methodAnnos = method.getAnnotations();
+        Annotation[] methodAnnos = AnnotationUtil.getMethodAnnotations(method);
         List<Param> params = new ArrayList<>();
         for(Annotation anno : methodAnnos){
             if(anno instanceof Params){
@@ -127,7 +128,7 @@ public class RpcUtil {
      * @throws Exception
      */
     public static void checkAuth(Method method, ChannelHandlerContext ctx, Map<String, Object> queryParams, IAuthTokenChecker rpcAuthChecker) throws Exception {
-        Auth auth = method.getAnnotation(Auth.class);
+        Auth auth = AnnotationUtil.getMethodAnnotation(method, Auth.class);
         if(null == auth){
             return;
         }

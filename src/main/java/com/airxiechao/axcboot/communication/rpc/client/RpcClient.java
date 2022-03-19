@@ -278,7 +278,9 @@ public class RpcClient {
             Response resp = callServer(RpcMessage.TYPE_PING, params);
             if(resp.isSuccess()){
                 router.updateRpcContextLastHeartbeatTime(new Date());
-                logger.info("rpc-client-[{}] heartbeat success", this.name);
+                if(verboseLog) {
+                    logger.info("rpc-client-[{}] heartbeat success", this.name);
+                }
             }else{
                 logger.error("rpc-client-[{}] heartbeat error [{}]", this.name, resp.getMessage());
             }

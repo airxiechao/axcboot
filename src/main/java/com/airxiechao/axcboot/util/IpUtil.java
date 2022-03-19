@@ -1,9 +1,6 @@
 package com.airxiechao.axcboot.util;
 
-import java.net.Inet4Address;
-import java.net.InetAddress;
-import java.net.InterfaceAddress;
-import java.net.NetworkInterface;
+import java.net.*;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -43,5 +40,34 @@ public class IpUtil {
         }
 
         return ips;
+    }
+
+    public static String getIp(boolean v4){
+        try {
+            Enumeration<NetworkInterface> interfaces = NetworkInterface.getNetworkInterfaces();
+            while (interfaces.hasMoreElements()) {
+                NetworkInterface iface = interfaces.nextElement();
+                // filters out 127.0.0.1 and inactive interfaces
+                if (iface.isLoopback() || !iface.isUp())
+                    continue;
+
+                Enumeration<InetAddress> addresses = iface.getInetAddresses();
+                while(addresses.hasMoreElements()) {
+                    InetAddress addr = addresses.nextElement();
+                    if(v4){
+                        if(addr instanceof Inet6Address){
+                            continue;
+                        }
+                    }
+
+                    String ip = addr.getHostAddress();
+                    return ip;
+                }
+            }
+        } catch (SocketException e) {
+            throw new RuntimeException("get ip error", e);
+        }
+
+        return null;
     }
 }

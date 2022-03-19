@@ -2,12 +2,14 @@ package com.airxiechao.axcboot.util.http;
 
 import com.airxiechao.axcboot.communication.common.FileData;
 import com.airxiechao.axcboot.util.StreamUtil;
+import com.airxiechao.axcboot.util.StringUtil;
 import com.alibaba.fastjson.JSON;
 import okhttp3.*;
 
 import java.io.File;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.util.Date;
 import java.util.Map;
 import java.util.function.BiConsumer;
@@ -17,6 +19,7 @@ import java.util.stream.Collectors;
 public class HttpCommonUtil {
     private static final MediaType FORM_UTF8_CONTENT_TYPE = MediaType.parse("application/x-www-form-urlencoded; charset=utf-8");
     private static final MediaType JSON_UTF8_CONTENT_TYPE = MediaType.parse("application/json; charset=utf-8");
+    private static final String CHARSET_LATIN_1 = "iso-8859-1";
 
     public static String get(
             OkHttpClient client,
@@ -114,16 +117,19 @@ public class HttpCommonUtil {
                 if (null != value) {
                     if(value instanceof File){
                         File file = (File)value;
-                        multipartBuilder.addFormDataPart(name, file.getName(),
+                        String fileName = file.getName();
+                        multipartBuilder.addFormDataPart(name, fileName,
                                 new ProgressFileRequestBody(file, "application/octet-stream", totalAndSpeedConsumer, stopSupplier)
                         );
                     }else if(value instanceof FileData){
                         FileData fileData = (FileData)value;
                         File file = fileData.getFileItem().getFile().toFile();
-                        multipartBuilder.addFormDataPart(name, file.getName(),
+                        String fileName = file.getName();
+                        multipartBuilder.addFormDataPart(name, fileName,
                                 new ProgressFileRequestBody(file, "application/octet-stream", totalAndSpeedConsumer, stopSupplier));
                     }else{
-                        multipartBuilder.addFormDataPart(name, value.toString());
+                        String val = value.toString();
+                        multipartBuilder.addFormDataPart(name, val);
                     }
                 }
             });

@@ -46,13 +46,13 @@
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-slf4j-impl</artifactId>
-            <version>2.14.1</version>
+            <version>2.17.1</version>
         </dependency>
         <!-- commons-logging bound to log4j2-->
         <dependency>
             <groupId>org.apache.logging.log4j</groupId>
             <artifactId>log4j-jcl</artifactId>
-            <version>2.14.1</version>
+            <version>2.17.1</version>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -62,7 +62,7 @@
         <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>fastjson</artifactId>
-            <version>1.2.58</version>
+            <version>1.2.79</version>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
@@ -168,7 +168,8 @@
         <dependency>
             <groupId>io.minio</groupId>
             <artifactId>minio</artifactId>
-            <version>8.3.0</version>
+            <version>8.3.6</version>
+            <optional>true</optional>
         </dependency>
 
         <dependency>
@@ -318,6 +319,7 @@
                             </gitDescribe>
                             <includeOnlyProperties>
                                 <includeOnlyProperty>^git.build.(time|version)$</includeOnlyProperty>
+                                <includeOnlyProperty>^git.closest.tag.name$</includeOnlyProperty>
                                 <includeOnlyProperty>^git.commit.id(.abbrev)?$</includeOnlyProperty>
                             </includeOnlyProperties>
                         </configuration>

@@ -30,6 +30,7 @@ import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URLEncoder;
+import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.text.ParseException;
 import java.util.*;
@@ -42,7 +43,7 @@ public class RestUtil {
         exchange.getQueryParameters().keySet().forEach(name -> {
             Deque<String> param = exchange.getQueryParameters().get(name);
             if(null != param && param.size() > 0 && !param.getFirst().isBlank()){
-                map.put(name, param.getFirst().trim());
+                map.put(name, param.getFirst().strip());
             }
         });
 
@@ -69,7 +70,7 @@ public class RestUtil {
             if(null != values && values.size() > 0){
                 String param = values.get(0);
                 if(!StringUtil.isBlank(param)) {
-                    map.put(name, param);
+                    map.put(name, param.strip());
                 }
             }
         });
@@ -199,6 +200,16 @@ public class RestUtil {
         }
     }
 
+    public static String rawStringData(HttpServerExchange exchange, Charset charset){
+        exchange.startBlocking();
+        InputStream inputStream = exchange.getInputStream();
+        try {
+            return new String(inputStream.readAllBytes(), charset);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static <T> T rawJsonData(HttpServerExchange exchange, Class<T> tClass) {
         String jsonString = rawStringData(exchange);
         T obj = JSON.parseObject(jsonString, tClass);
@@ -222,7 +233,7 @@ public class RestUtil {
                         null != formData.get(name).getFirst() &&
                         null != formData.get(name).getFirst().getValue() &&
                         !formData.get(name).getFirst().getValue().isBlank()){
-                    map.put(name, formData.get(name).getFirst().getValue().trim());
+                    map.put(name, formData.get(name).getFirst().getValue().strip());
                 }
             }
         }
@@ -256,8 +267,52 @@ public class RestUtil {
         return map;
     }
 
+    public static Map<String, Object> allMultiPartFormData(HttpServerExchange exchange){
+        Map<String, Object> map = new HashMap<>();
+
+        FormData formData = exchange.getAttachment(FormDataParser.FORM_DATA);
+        if(null != formData){
+            for(String name : formData){
+                if(null != formData.get(name) && null != formData.get(name).getFirst()){
+                    FormData.FormValue formValue = formData.get(name).getFirst();
+                    if(formValue.isFileItem()) {
+                        String fileName = formValue.getFileName();
+                        try {
+                            fileName = new String(fileName.getBytes("iso-8859-1"),"utf-8");
+                        } catch (UnsupportedEncodingException e) {
+
+                        }
+                        FormData.FileItem fileItem = formValue.getFileItem();
+                        FileData fileData = new FileData(fileName, fileItem);
+                        map.put(name, fileData);
+                    }else{
+                        String stringValue = formValue.getValue();
+                        if(null != stringValue && !stringValue.isBlank()){
+                            try {
+                                stringValue = new String(stringValue.getBytes("iso-8859-1"),"utf-8");
+                            } catch (UnsupportedEncodingException e) {
+
+                            }
+                            map.put(name, stringValue);
+                        }
+                    }
+                }
+            }
+        }
+
+        return map;
+    }
+
     public static <T> T formData(HttpServerExchange exchange, Class<T> tClass) {
         Map<String, Object> formData = RestUtil.allFormData(exchange);
+        JSONObject jsonObject = new JSONObject(formData);
+        T obj = jsonObject.toJavaObject(tClass);
+        ClsUtil.checkRequiredField(obj);
+        return obj;
+    }
+
+    public static <T> T multiPartFormData(HttpServerExchange exchange, Class<T> tClass) {
+        Map<String, Object> formData = RestUtil.allMultiPartFormData(exchange);
         JSONObject jsonObject = new JSONObject(formData);
         T obj = jsonObject.toJavaObject(tClass);
         ClsUtil.checkRequiredField(obj);

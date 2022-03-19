@@ -13,7 +13,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.*;
+import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Future;
@@ -83,12 +85,59 @@ public class MinIoFs implements IFs {
     }
 
     @Override
+    public FsFile get(String path) throws FileNotFoundException {
+        path = getNormalFilePath(path);
+
+        try{
+            Iterable<Result<Item>> res = minioClient.listObjects(ListObjectsArgs.builder()
+                    .bucket(bucket)
+                    .prefix(path)
+                    .build());
+            for(Result<Item> item : res){
+                Item it = item.get();
+                String name = it.objectName();
+                if(!name.startsWith("/")){
+                    name = "/" + name;
+                }
+
+                if(name.equals(path) || name.equals(path + "/")){
+                    boolean isDir = it.isDir();
+                    long size = it.size();
+                    Long lastModified = null;
+                    try{
+                        lastModified = Date.from(it.lastModified().toInstant()).getTime();
+
+                    }catch (Exception e){
+
+                    }
+
+                    String shortName = getShortName(name);
+                    String normalName = getNormalFilePath(name);
+                    return new FsFile(normalName, shortName, isDir, size, lastModified);
+                }
+            }
+
+            throw new FileNotFoundException("file not found: " + path);
+        }catch (Exception e){
+            logger.error("minio get file error", e);
+            throw new FileNotFoundException("get file error: " + path);
+        }
+    }
+
+    @Override
     public List<FsFile> list(String path) {
         return listObjects(path).stream().map( item -> {
             String name = item.objectName();
+            Long lastModified = null;
+            try{
+                lastModified = Date.from(item.lastModified().toInstant()).getTime();
+            }catch (Exception e){
+
+            }
+
             String shortName = getShortName(name);
             String normalName = getNormalFilePath(name);
-            return new FsFile(normalName, shortName, item.isDir(), item.size());
+            return new FsFile(normalName, shortName, item.isDir(), item.size(), lastModified);
         }).collect(Collectors.toList());
     }
 
@@ -311,7 +360,7 @@ public class MinIoFs implements IFs {
             logger.info("minio put object [pool:{}, active:{}, core:{}, max:{}, queue:{}]",
                     executor.getPoolSize(), executor.getActiveCount(), executor.getCorePoolSize(), executor.getMaximumPoolSize(), executor.getQueue().size());
 
-            Future<?> future = CompletableFuture.runAsync(() -> {
+            CompletableFuture<?> future = CompletableFuture.runAsync(() -> {
                 try{
                     minioClient.putObject(PutObjectArgs.builder()
                             .bucket(bucket)
@@ -320,6 +369,11 @@ public class MinIoFs implements IFs {
                             .build());
                 }catch (Exception e){
                     logger.error("minio put object [{}] error", path2, e);
+                    try {
+                        inputStream.close();
+                    } catch (IOException ioException) {
+
+                    }
                 }
             }, executor);
 

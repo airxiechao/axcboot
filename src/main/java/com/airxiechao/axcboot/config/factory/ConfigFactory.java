@@ -23,18 +23,19 @@ public class ConfigFactory {
     }
 
     public static <T> T get(Class<T> cls, String configFilePath){
-        Object config = instance.configMap.get(cls);
+        String configKey = buildConfigKey(cls, configFilePath);
+        Object config = instance.configMap.get(configKey);
         if(null != config){
             return (T)config;
         }
 
         T loaded = instance.loadConfig(cls, configFilePath);
-        instance.configMap.put(cls, loaded);
+        instance.configMap.put(configKey, loaded);
         return loaded;
     }
 
     private IFs fs = new JavaResourceFs();
-    private Map<Class, Object> configMap = new ConcurrentHashMap<>();
+    private Map<String, Object> configMap = new ConcurrentHashMap<>();
 
     private ConfigFactory(){
     }
@@ -58,5 +59,9 @@ public class ConfigFactory {
         } catch (Exception e) {
             throw new RuntimeException("load " + ymlPath + " error");
         }
+    }
+
+    private static <T> String buildConfigKey(Class<T> cls, String ymlPath){
+        return String.format("%s-%s", cls.getName(), ymlPath);
     }
 }

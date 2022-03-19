@@ -13,63 +13,60 @@ public class StreamUtil {
      * 读取输入流
      */
     public static void readStringInputStream(InputStream inputStream, int bufferSize, Charset charset, Consumer<String> consumer) throws Exception {
-        try(Reader logReader = new InputStreamReader(inputStream, charset)){
-            char[] buffer = new char[bufferSize];
-            while(true){
-                int num = -1;
-                try{
-                    num = logReader.read(buffer);
-                }catch (IOException e){
+        Reader logReader = new InputStreamReader(inputStream, charset);
+        char[] buffer = new char[bufferSize];
+        while(true){
+            int num = -1;
+            try{
+                num = logReader.read(buffer);
+            }catch (IOException e){
 
-                }
-
-                if(num < 0){
-                    break;
-                }
-
-                StringBuilder sb = new StringBuilder();
-                sb.append(buffer, 0, num);
-                String str = sb.toString();
-                consumer.accept(str);
             }
+
+            if(num < 0){
+                break;
+            }
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(buffer, 0, num);
+            String str = sb.toString();
+            consumer.accept(str);
         }
     }
 
     public static void readStringInputStream(InputStream inputStream, int bufferSize, Charset charset, Function<String, Boolean> consumer) throws Exception {
-        try(Reader logReader = new InputStreamReader(inputStream, charset)){
-            char[] buffer = new char[bufferSize];
-            while(true){
-                int num = -1;
-                try{
-                    num = logReader.read(buffer);
-                }catch (IOException e){
+        Reader logReader = new InputStreamReader(inputStream, charset);
+        char[] buffer = new char[bufferSize];
+        while(true){
+            int num = -1;
+            try{
+                num = logReader.read(buffer);
+            }catch (IOException e){
 
-                }
-                if(num < 0){
-                    break;
-                }
+            }
+            if(num < 0){
+                break;
+            }
 
-                StringBuilder sb = new StringBuilder();
-                sb.append(buffer, 0, num);
-                String str = sb.toString();
+            StringBuilder sb = new StringBuilder();
+            sb.append(buffer, 0, num);
+            String str = sb.toString();
 
-                Boolean ret = consumer.apply(str);
-                if(ret != true){
-                    break;
-                }
+            Boolean ret = consumer.apply(str);
+            if(ret != true){
+                break;
             }
         }
     }
 
     public static void readStringInputStreamNoneBlocking(InputStream inputStream, int bufferSize, Charset charset, Function<String, Boolean> consumer) throws Exception {
+        Reader logReader = new InputStreamReader(inputStream, charset);
+        char[] buffer = new char[bufferSize];
         while(true){
             int num = -1;
-            byte[] buffer = null;
             try{
-                int available = inputStream.available();
-                if(available > 0){
-                    buffer = inputStream.readNBytes(Math.min(available, bufferSize));
-                    num = buffer.length;
+                if(logReader.ready()){
+                    num = logReader.read(buffer);
                 }else{
                     num = 0;
                 }
@@ -82,7 +79,7 @@ public class StreamUtil {
 
             String str = "";
             if(num > 0) {
-                str = new String(buffer, charset);
+                str = new String(buffer, 0, num);
             }
 
             Boolean ret = consumer.apply(str);

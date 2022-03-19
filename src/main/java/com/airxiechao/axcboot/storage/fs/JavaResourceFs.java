@@ -21,13 +21,28 @@ public class JavaResourceFs implements IFs {
     }
 
     @Override
+    public FsFile get(String path) throws FileNotFoundException {
+        if(!exist(path)){
+            throw new FileNotFoundException("file not found: " + path);
+        }
+
+        File dir = getFile(".");
+        File file = getFile(path);
+        Path relativePath = dir.toPath().relativize(file.toPath());
+        return new FsFile(relativePath.toString(), file.getName(), file.isDirectory(), file.length(), file.lastModified());
+    }
+
+    @Override
     public List<FsFile> list(String path) {
         File dir = getFile(".");
         File file = getFile(path);
         List<FsFile> list = new ArrayList<>();
-        for (File f : file.listFiles()) {
-            Path relativePath = dir.toPath().relativize(f.toPath());
-            list.add(new FsFile(relativePath.toString(), f.getName(), f.isDirectory(), f.length()));
+        File[] files = file.listFiles();
+        if(null != files) {
+            for (File f : files) {
+                Path relativePath = dir.toPath().relativize(f.toPath());
+                list.add(new FsFile(relativePath.toString(), f.getName(), f.isDirectory(), f.length(), f.lastModified()));
+            }
         }
         return list;
     }
