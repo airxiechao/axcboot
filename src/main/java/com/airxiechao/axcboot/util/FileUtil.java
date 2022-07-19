@@ -65,4 +65,12 @@ public class FileUtil {
             }
         }
     }
+
+    public static long sizeOfDirectory(File dir){
+        if(dir.isDirectory()) {
+            return FileUtils.sizeOfDirectory(dir);
+        }else{
+            return 0;
+        }
+    }
 }

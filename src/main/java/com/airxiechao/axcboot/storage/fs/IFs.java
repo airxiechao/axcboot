@@ -16,6 +16,7 @@ public interface IFs {
     boolean move(String srcPath, String destPath);
     boolean copy(String srcPath, String destPath);
     long length(String path);
+    long sizeOfDirectory(String path);
     boolean isDirectory(String path);
     InputStream getInputStream(String path) throws FileNotFoundException;
     OutputStream getOutputStream(String path) throws FileNotFoundException;

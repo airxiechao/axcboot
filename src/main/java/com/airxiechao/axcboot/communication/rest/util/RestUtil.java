@@ -429,24 +429,29 @@ public class RestUtil {
         return value;
     }
 
-    public static String getAuthToken(HttpServerExchange exchange){
-        String token = null;
+    public static String getHeaderOrCookieOrParam(HttpServerExchange exchange, String name){
+        String value = null;
 
-        token = exchange.getRequestHeaders().getFirst("auth");
-        if(!StringUtil.isBlank(token)){
-            return token;
+        value = exchange.getRequestHeaders().getFirst(name);
+        if(!StringUtil.isBlank(value)){
+            return value;
         }
 
-        Cookie authCookie = exchange.getRequestCookies().get("auth");
+        Cookie authCookie = exchange.getRequestCookies().get(name);
         if(null == authCookie){
-            token = RestUtil.queryStringParam(exchange, "auth");
-            if(null == token){
-                token = RestUtil.formStringData(exchange, "auth");
+            value = RestUtil.queryStringParam(exchange, name);
+            if(null == value){
+                value = RestUtil.formStringData(exchange, name);
             }
         }else{
-            token = authCookie.getValue();
+            value = authCookie.getValue();
         }
 
+        return value;
+    }
+
+    public static String getAuthToken(HttpServerExchange exchange){
+        String token = getHeaderOrCookieOrParam(exchange, "auth");
         return token;
     }
 
@@ -455,15 +460,20 @@ public class RestUtil {
         return value;
     }
 
-    public static String getWsAuthToken(WebSocketHttpExchange exchange){
-        String token = null;
+    public static String getWsHeaderOrParam(WebSocketHttpExchange exchange, String name){
+        String value = null;
 
-        token = exchange.getRequestHeader("auth");
-        if(!StringUtil.isBlank(token)){
-            return token;
+        value = exchange.getRequestHeader(name);
+        if(!StringUtil.isBlank(value)){
+            return value;
         }
 
-        token = RestUtil.queryWsStringParam(exchange, "auth");
+        value = RestUtil.queryWsStringParam(exchange, name);
+        return value;
+    }
+
+    public static String getWsAuthToken(WebSocketHttpExchange exchange){
+        String token = getWsHeaderOrParam(exchange, "auth");;
         return token;
     }
 

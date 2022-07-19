@@ -155,6 +155,32 @@ public class StreamUtil {
 
     }
 
+    public static void dropInputStreamUtil(InputStream inputStream, int markByte, int numMark){
+        try{
+            while(true){
+                int available = inputStream.available();
+                int bc = 0;
+                for(int i = 0; i < available; ++i){
+                    int b = inputStream.read();
+                    if(b != markByte){
+                        bc = 0;
+                    }else{
+                        bc += 1;
+                    }
+
+                    if(bc == numMark){
+                        break;
+                    }
+                }
+                if(bc == numMark){
+                    break;
+                }
+            }
+        }catch (Exception e){
+
+        }
+    }
+
     /**
      * 从输入流读取所有字符串
      * @param inputStream

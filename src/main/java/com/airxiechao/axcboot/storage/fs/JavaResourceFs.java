@@ -1,6 +1,7 @@
 package com.airxiechao.axcboot.storage.fs;
 
 import com.airxiechao.axcboot.storage.fs.common.FsFile;
+import com.airxiechao.axcboot.util.FileUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,6 +74,12 @@ public class JavaResourceFs implements IFs {
     public long length(String path) {
         File file = getFile(path);
         return file.length();
+    }
+
+    @Override
+    public long sizeOfDirectory(String path) {
+        File file = getFile(path);
+        return FileUtil.sizeOfDirectory(file);
     }
 
     @Override

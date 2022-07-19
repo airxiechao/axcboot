@@ -393,6 +393,18 @@ public class RpcServer {
     }
 
     /**
+     * 获取所有客户端rpc上下文
+     * @return
+     */
+    public List<RpcContext> getAllRpcContext(){
+        if(null == router){
+            return new ArrayList<>();
+        }
+
+        return router.getRpcContextContainer().clientRpcContextEntrySet().stream().map(entry -> entry.getValue()).collect(Collectors.toList());
+    }
+
+    /**
      * 获取在线客户端
      * @return
      */
@@ -690,6 +702,14 @@ public class RpcServer {
             }
 
             this.rpcContextContainer.put(client, rpcContext);
+        }
+
+        /**
+         * 获取客户端rpc上下文容器
+         * @return
+         */
+        public RpcContextContainer getRpcContextContainer(){
+            return this.rpcContextContainer;
         }
 
         /**

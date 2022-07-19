@@ -103,6 +103,12 @@ public class LocalFs implements IFs {
     }
 
     @Override
+    public long sizeOfDirectory(String path) {
+        File file = getFile(path);
+        return FileUtil.sizeOfDirectory(file);
+    }
+
+    @Override
     public boolean isDirectory(String path) {
         File file = getFile(path);
         return file.isDirectory();

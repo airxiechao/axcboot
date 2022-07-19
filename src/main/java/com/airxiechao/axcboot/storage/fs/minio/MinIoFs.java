@@ -299,6 +299,32 @@ public class MinIoFs implements IFs {
     }
 
     @Override
+    public long sizeOfDirectory(String path) {
+        path = getNormalDirPath(path);
+
+        if(!isDirectory(path)){
+            return 0;
+        }
+
+        long total = 0;
+        try{
+            Iterable<Result<Item>> res = minioClient.listObjects(ListObjectsArgs.builder()
+                    .bucket(bucket)
+                    .prefix(path)
+                    .recursive(true)
+                    .build());
+            for(Result<Item> item : res){
+                long size = item.get().size();
+                total += size;
+            }
+
+            return total;
+        }catch (Exception e){
+            return 0;
+        }
+    }
+
+    @Override
     public boolean isDirectory(String path) {
         path = getNormalFilePath(path);
 

@@ -8,5 +8,7 @@ import java.lang.annotation.*;
 public @interface Index {
     String[] fields();
     boolean unique() default false;
+    boolean fulltext() default false;
     String method() default "BTREE";
+    String parser() default "ngram";
 }

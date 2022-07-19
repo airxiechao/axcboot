@@ -459,6 +459,10 @@ public class RpcClient {
         return false;
     }
 
+    public RpcContext getRpcContext(){
+        return router.getRpcContext();
+    }
+
     public RPC_CLIENT_STATUS getStatus() {
         return status;
     }
@@ -675,6 +679,10 @@ public class RpcClient {
             this.executor.shutdownNow();
         }
 
+        /**
+         * 获取rpc上下文
+         * @return
+         */
         public RpcContext getRpcContext(){
             return rpcContext;
         }

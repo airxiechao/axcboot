@@ -1,8 +1,10 @@
 package com.airxiechao.axcboot.storage.db.sql.util;
 
 import com.airxiechao.axcboot.storage.db.sql.model.SqlParams;
+import com.airxiechao.axcboot.util.StringUtil;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class SqlParamsBuilder {
 
@@ -13,11 +15,17 @@ public class SqlParamsBuilder {
         public String field;
         public String operator;
         public Object value;
+        public boolean isMatchAgainst;
 
         public SqlWhereTriple(String field, String operator, Object value){
+            this(field, operator, value, false);
+        }
+
+        public SqlWhereTriple(String field, String operator, Object value, boolean isMatchAgainst){
             this.field = field;
             this.operator = operator;
             this.value = value;
+            this.isMatchAgainst = isMatchAgainst;
         }
     }
 
@@ -29,7 +37,21 @@ public class SqlParamsBuilder {
         public SqlWhereTripleGroup(){}
 
         public SqlWhereTripleGroup and(String field, String operator, Object value){
+            and(field, operator, value, false);
+            return this;
+        }
+
+        public SqlWhereTripleGroup or(String field, String operator, Object value, boolean isMatchAgainst){
             SqlWhereTriple triple = new SqlWhereTriple(field, operator, value);
+
+            triples.add(triple);
+            logics.add(OR);
+
+            return this;
+        }
+
+        public SqlWhereTripleGroup and(String field, String operator, Object value, boolean isMatchAgainst){
+            SqlWhereTriple triple = new SqlWhereTriple(field, operator, value, isMatchAgainst);
 
             triples.add(triple);
             logics.add(AND);
@@ -38,10 +60,7 @@ public class SqlParamsBuilder {
         }
 
         public SqlWhereTripleGroup or(String field, String operator, Object value){
-            SqlWhereTriple triple = new SqlWhereTriple(field, operator, value);
-
-            triples.add(triple);
-            logics.add(OR);
+            or(field, operator, value, false);
 
             return this;
         }
@@ -55,6 +74,7 @@ public class SqlParamsBuilder {
                 SqlWhereTriple triple = triples.get(i);
                 String field = triple.field;
                 String operator = triple.operator;
+                boolean isMatchAgainst = triple.isMatchAgainst;
                 Object value = triple.value;
                 String logic = logics.get(i);
 
@@ -63,12 +83,26 @@ public class SqlParamsBuilder {
                 }
 
                 String paramName = spBuilder.getParamName();
-                sb.append(" "+logic+" "+field+" "+operator+" #{"+paramName+"} ");
+                if(isMatchAgainst){
+                    sb.append(" "+logic+" MATCH("+field+") AGAINST(#{"+paramName+"}) ");
+                }else{
+                    sb.append(" "+logic+" "+field+" "+operator+" #{"+paramName+"} ");
+                }
                 params.put(paramName, value);
             }
             sb.append(") ");
 
             return new SqlParams(sb.toString(), params);
+        }
+    }
+
+    public static class SqlOrder {
+        public String orderField;
+        public String orderType;
+
+        public SqlOrder(String orderField, String orderType){
+            this.orderField = orderField;
+            this.orderType = orderType;
         }
     }
 
@@ -80,8 +114,7 @@ public class SqlParamsBuilder {
     private String groupBy;
     private Integer pageNo;
     private Integer pageSize;
-    private String orderField;
-    private String orderType;
+    private List<SqlOrder> orders = new ArrayList<>();
     private boolean isCount;
     private boolean isDelete;
     private int pnCount;
@@ -111,6 +144,13 @@ public class SqlParamsBuilder {
         return this;
     }
 
+    public SqlParamsBuilder where(String field, String operator, Object value, boolean isMatchAgainst){
+        SqlWhereTriple triple = new SqlWhereTriple(field, operator, value, isMatchAgainst);
+        wheres.add(triple);
+
+        return this;
+    }
+
     public SqlParamsBuilder whereGroup(SqlWhereTripleGroup tripleGroup){
         whereGroups.add(tripleGroup);
 
@@ -118,8 +158,8 @@ public class SqlParamsBuilder {
     }
 
     public SqlParamsBuilder order(String orderField, String orderType){
-        this.orderField = orderField;
-        this.orderType = orderType;
+        SqlOrder order = new SqlOrder(orderField, orderType);
+        this.orders.add(order);
 
         return this;
     }
@@ -175,42 +215,55 @@ public class SqlParamsBuilder {
             String field = triple.field;
             String operator = triple.operator;
             Object value = triple.value;
+            boolean isMatchAgainst = triple.isMatchAgainst;
 
             if(null == value){
                 continue;
             }
 
             String paramName = getParamName();
-            sb.append("and "+field+" "+operator+" #{"+paramName+"} ");
+            if(isMatchAgainst){
+                sb.append("and MATCH("+field+") AGAINST(#{"+paramName+"}) ");
+            }else{
+                sb.append("and "+field+" "+operator+" #{"+paramName+"} ");
+            }
             params.put(paramName, value);
         }
         for(int i = 0; i < whereGroups.size(); ++i){
             SqlWhereTripleGroup tripleGroup = whereGroups.get(i);
             SqlParams sqlParams = tripleGroup.build(this);
-            sb.append(sqlParams.getSql());
+            sb.append("and " +sqlParams.getSql());
             params.putAll(sqlParams.getParams());
         }
         String where = sb.toString();
 
         // build order clause
         sb = new StringBuilder();
-        if(null != this.orderField && !this.orderField.isBlank() && null != this.orderType && !this.orderType.isBlank()){
-            switch (this.orderField){
-                default:
-                    this.orderField = " `"+this.orderField+"` ";
-                    break;
-            }
+        List<String> orderByList = this.orders
+                .stream()
+                .filter(order -> !StringUtil.isBlank(order.orderField) && !StringUtil.isBlank(order.orderType))
+                .map(order -> {
+                    String orderField = order.orderField;
+                    String orderType = order.orderType;
 
-            if(!orderField.isBlank()){
-                sb.append("order by " + this.orderField + " " + this.orderType + " ");
-            }
+                    switch (orderField){
+                        default:
+                            orderField = " `"+orderField+"` ";
+                            break;
+                    }
+
+                    return orderField + " " + orderType + " ";
+
+                }).collect(Collectors.toList());
+        if (orderByList.size() > 0) {
+            sb.append("order by " + String.join(",", orderByList) + " ");
         }
         String order = sb.toString();
 
         // build groupby clause
         sb = new StringBuilder();
         if(null != this.groupBy){
-            sb.append(this.groupBy);
+            sb.append("group by " + this.groupBy + " ");
         }
         String groupBy = sb.toString();
 

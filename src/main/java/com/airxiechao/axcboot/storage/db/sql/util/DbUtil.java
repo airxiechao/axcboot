@@ -21,6 +21,10 @@ public class DbUtil {
             .put(int.class, "int")
             .put(Long.class, "bigint")
             .put(long.class, "bigint")
+            .put(float.class, "float")
+            .put(Float.class, "float")
+            .put(double.class, "double")
+            .put(Double.class, "double")
             .put(String.class, "varchar")
             .put(Date.class, "datetime")
             .put(Boolean.class, "tinyint")
@@ -30,6 +34,8 @@ public class DbUtil {
     private static Map<String, Integer> columnDefaultLengthMap = new MapBuilder<String, Integer>()
             .put("int", 11)
             .put("bigint", 20)
+            .put("float", -1)
+            .put("double", -1)
             .put("varchar", 50)
             .put("datetime", 0)
             .put("text", -1)
@@ -54,6 +60,15 @@ public class DbUtil {
         }
     }
 
+    public static String columns(Class<?> tClass, String[] fieldNames) {
+        List<String> names = new ArrayList<>();
+        for(String fieldName : fieldNames){
+            names.add(column(tClass, fieldName));
+        }
+
+        return String.join(",", names);
+    }
+
     public static String column(Field field){
         Column column = field.getAnnotation(Column.class);
         if(null != column){
@@ -64,6 +79,15 @@ public class DbUtil {
         }
 
         return StringUtil.camelCaseToUnderscore(field.getName());
+    }
+
+    public static String columns(Field[] fields) {
+        List<String> names = new ArrayList<>();
+        for(Field field : fields){
+            names.add(column(field));
+        }
+
+        return String.join(",", names);
     }
 
     public static String columnType(Field field){
@@ -196,15 +220,31 @@ public class DbUtil {
             indexList.addAll(Arrays.asList(multipleIndexes.value()));
         }
         for(Index index : indexList){
-            String indexType = index.unique() ? "UNIQUE " : "";
+            String indexType;
+            String indexNamePrefix;
+            if(index.unique()){
+                indexType = "UNIQUE ";
+                indexNamePrefix = "unique-";
+            }else if(index.fulltext()){
+                indexType = "FULLTEXT ";
+                indexNamePrefix = "ft-";
+            }else{
+                indexType = "";
+                indexNamePrefix = "index-";
+            }
             List<String> columns = Arrays.stream(index.fields()).map(f -> DbUtil.column(tClass, f)).collect(Collectors.toList());
             String indexColumns = String.join(",", columns.stream().map(c -> "`" + c + "`").collect(Collectors.toList()));
-            String indexMethod = index.method();
-            String indexNamePrefix = index.unique() ? "unique-" : "index-";
             String indexName = indexNamePrefix + String.join("-", columns);
 
             pwColumn.print(padding);
-            pwColumn.println(String.format("%sINDEX `%s`(%s) USING %s,", indexType, indexName, indexColumns, indexMethod));
+            pwColumn.print(String.format("%sINDEX `%s`(%s) ", indexType, indexName, indexColumns));
+            if(index.fulltext()){
+                String indexParser = index.parser();
+                pwColumn.println(String.format("WITH PARSER %s,", indexParser));
+            }else{
+                String indexMethod = index.method();
+                pwColumn.println(String.format("USING %s,", indexMethod));
+            }
         }
 
         String ddlColumn = swColumn.toString();
