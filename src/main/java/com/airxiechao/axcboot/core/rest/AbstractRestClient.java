@@ -39,7 +39,7 @@ public abstract class AbstractRestClient {
 
                 Get get = AnnotationUtil.getMethodAnnotation(method, Get.class);
                 if(null != get){
-                    respString = HttpUtil.get(url, params, headers, cookies, timeout, false);
+                    respString = HttpUtil.get(url, params, headers, cookies, timeout, useSsl);
                 }
 
                 Post post = AnnotationUtil.getMethodAnnotation(method, Post.class);

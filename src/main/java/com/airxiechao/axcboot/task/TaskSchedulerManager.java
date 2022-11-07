@@ -5,6 +5,8 @@ import com.airxiechao.axcboot.task.quartz.QuartzScheduler;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import static org.quartz.impl.StdSchedulerFactory.PROPERTIES_FILE;
+
 public class TaskSchedulerManager {
     private static TaskSchedulerManager instance = new TaskSchedulerManager();
 
@@ -37,6 +39,17 @@ public class TaskSchedulerManager {
     public ITaskScheduler getQuartzScheduler(){
         ITaskScheduler scheduler = taskSchedulers.get(QUARTZ_SCHEDULER);
         if(null == scheduler){
+            scheduler = new QuartzScheduler();
+            taskSchedulers.put(QUARTZ_SCHEDULER, scheduler);
+        }
+
+        return scheduler;
+    }
+
+    public ITaskScheduler getQuartzScheduler(String propertiesFile){
+        ITaskScheduler scheduler = taskSchedulers.get(QUARTZ_SCHEDULER);
+        if(null == scheduler){
+            System.setProperty(PROPERTIES_FILE, propertiesFile);
             scheduler = new QuartzScheduler();
             taskSchedulers.put(QUARTZ_SCHEDULER, scheduler);
         }
