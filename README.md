@@ -291,6 +291,7 @@ import com.airxiechao.axcboot.util.HttpUtil;
 import com.airxiechao.axcboot.util.MapBuilder;
 import com.airxiechao.axcboot.util.ProxyUtil;
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import io.undertow.server.HttpServerExchange;
 
 import java.util.Map;
@@ -299,9 +300,12 @@ public class RestTestServer {
 
     public static void main(String[] args) throws InterruptedException {
         RestServer restServer = new RestServer("test");
-        restServer.config("0.0.0.0", 80, null, null, null,
+        restServer.config("0.0.0.0", 88, null, null, null,
                 (exchange, principal, roles) -> {
                     return false;
+                }, (exchange, method) -> {
+                    String jsonString = JSON.toJSONString(RestUtil.allQueryStringParam(exchange));
+                    return JSON.parseObject(jsonString, method.getParameterTypes()[0]);
                 });
 
         restServer
@@ -313,53 +317,91 @@ public class RestTestServer {
 
         Thread.sleep(1000);
 
-        Map params = new MapBuilder<String, String>()
-                .put("a", "1")
-                .put("b", "2")
-                .build();
-        Response resp = RestClient.get(Add.class).add(params);
+        ABParam param = new ABParam(1,2);
+        Response resp = RestClient.get(Add.class).add(param);
         System.out.println(resp.getData());
     }
 
+}
+class ABParam {
+    private Integer a;
+    private Integer b;
+
+    public ABParam() {
+    }
+
+    public ABParam(Integer a, Integer b) {
+        this.a = a;
+        this.b = b;
+    }
+
+    public Integer getA() {
+        return a;
+    }
+
+    public void setA(Integer a) {
+        this.a = a;
+    }
+
+    public Integer getB() {
+        return b;
+    }
+
+    public void setB(Integer b) {
+        this.b = b;
+    }
 }
 
 interface Add {
     /**
      * 加法：/api/add?a=1&b=2
-     * @param exc
+     * @param param
      * @return
      */
     @Get("/add")
     @Param(value = "a", required = true)
     @Param(value = "b", required = true)
-    Response add(Object exc);
+    Response add(ABParam param);
 }
 
-class RestHandler implements Add {
+class RestHandler implements Add{
+
+//    private HttpServerExchange exchange;
+//
+//    public RestHandler(HttpServerExchange exchange) {
+//        this.exchange = exchange;
+//    }
 
     @Override
-    public Response add(Object exc) {
-
-        HttpServerExchange exchange = (HttpServerExchange) exc;
-
-        Integer a = RestUtil.queryIntegerParam(exchange, "a");
-        Integer b = RestUtil.queryIntegerParam(exchange, "b");
+    public Response add(ABParam param) {
+        Integer a = param.getA();
+        Integer b = param.getB();
 
         Response resp = new Response();
         resp.success();
-        resp.setData(a + b);
+        resp.setData(a+b);
 
         return resp;
     }
 }
 
 class RestClient {
-    public static <T> T get(Class<T> cls) {
+    public static <T> T get(Class<T> cls){
         return ProxyUtil.buildProxy(cls, (proxy, method, args) -> {
             String path = AnnotationUtil.getMethodAnnotation(method, Get.class).value();
-            Map params = (Map) args[0];
+            Map params = ModelUtil.toMap(args[0]);
 
-            String ret = HttpUtil.get("http://127.0.0.1/api" + path, params);
+            String ret = HttpUtil.get("http://127.0.0.1:88/api"+path, params, null, null, 10, false);
+            return JSON.parseObject(ret, Response.class);
+        });
+    }
+
+    public static <T> T getBySsl(Class<T> cls){
+        return ProxyUtil.buildProxy(cls, (proxy, method, args) -> {
+            String path = AnnotationUtil.getMethodAnnotation(method, Get.class).value();
+            Map params = ModelUtil.toMap(args[0]);
+
+            String ret = HttpUtil.get("https://127.0.0.1:443/api"+path, params, null, null, 10, true);
             return JSON.parseObject(ret, Response.class);
         });
     }

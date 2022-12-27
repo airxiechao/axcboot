@@ -689,6 +689,30 @@ public class DbManager {
     }
 
     /**
+     * 更新对象字段
+     * @param object
+     * @param fields
+     * @return
+     */
+    public int updateFields(Object object, List<String> fields){
+        String datasource = getDatasource(object.getClass());
+        try(SqlSession session = openSession(datasource, true)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            int ret = mapper.updateFields(object, fields);
+            return ret;
+        }
+    }
+
+    public int updateFields(Object object, Object datasourceMethodParam, List<String> fields){
+        String datasource = getDatasource(object.getClass(), datasourceMethodParam);
+        try(SqlSession session = openSession(datasource, true)){
+            DbMapper mapper = session.getMapper(DbMapper.class);
+            int ret = mapper.updateFields(object, fields);
+            return ret;
+        }
+    }
+
+    /**
      * SQL更新
      * @param sql
      * @return

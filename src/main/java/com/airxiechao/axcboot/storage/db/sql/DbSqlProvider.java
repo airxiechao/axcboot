@@ -59,6 +59,25 @@ public class DbSqlProvider {
         return sql.toString();
     }
 
+    public String updateFields(@Param("object") Object object, List<String> fields){
+        String tableName = DbUtil.table(object.getClass());
+
+        SQL sql = new SQL();
+        sql.UPDATE(tableName);
+        for(Field field : object.getClass().getDeclaredFields()){
+            if(field.getName().equals("id") || Modifier.isStatic(field.getModifiers())){
+                continue;
+            }
+
+            if(fields.contains(field.getName()) || fields.contains(DbUtil.column(field))){
+                sql.SET("`"+DbUtil.column(field) + "` = #{object."+field.getName()+"}");
+            }
+        }
+        sql.WHERE("id = #{object.id}");
+
+        return sql.toString();
+    }
+
     public String insert(Object object){
         String tableName = DbUtil.table(object.getClass());
 

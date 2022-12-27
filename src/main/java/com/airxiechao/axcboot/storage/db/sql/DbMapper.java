@@ -53,6 +53,9 @@ public interface DbMapper {
     @UpdateProvider(type = DbSqlProvider.class, method = "update")
     int update(Object object);
 
+    @UpdateProvider(type = DbSqlProvider.class, method = "updateFields")
+    int updateFields(@Param("object") Object object, List<String> fields);
+
     @UpdateProvider(type = DbSqlProvider.class, method = "parameterizedSql")
     int updateBySql(@Param("sql") String sql, @Param("params") Map params);
 

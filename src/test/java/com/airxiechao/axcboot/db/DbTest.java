@@ -3,6 +3,8 @@ package com.airxiechao.axcboot.db;
 import com.airxiechao.axcboot.storage.annotation.Table;
 import com.airxiechao.axcboot.storage.db.sql.DbManager;
 
+import java.util.Arrays;
+
 public class DbTest {
 
     @Table(value = "x", datasource = "datasource1")
@@ -66,6 +68,9 @@ public class DbTest {
 
         dbManager.insert(x);
         dbManager.insert(y);
+
+        x.setValue("333");
+        dbManager.updateFields(x, Arrays.asList("value"));
     }
 
 }

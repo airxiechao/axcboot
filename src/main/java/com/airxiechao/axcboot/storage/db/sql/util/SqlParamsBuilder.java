@@ -78,10 +78,6 @@ public class SqlParamsBuilder {
                 Object value = triple.value;
                 String logic = logics.get(i);
 
-                if(null == value){
-                    continue;
-                }
-
                 String paramName = spBuilder.getParamName();
                 if(isMatchAgainst){
                     sb.append(" "+logic+" MATCH("+field+") AGAINST(#{"+paramName+"}) ");
@@ -216,10 +212,6 @@ public class SqlParamsBuilder {
             String operator = triple.operator;
             Object value = triple.value;
             boolean isMatchAgainst = triple.isMatchAgainst;
-
-            if(null == value){
-                continue;
-            }
 
             String paramName = getParamName();
             if(isMatchAgainst){

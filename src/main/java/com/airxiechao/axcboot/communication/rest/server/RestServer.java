@@ -6,6 +6,7 @@ import com.airxiechao.axcboot.communication.common.security.IAuthTokenChecker;
 import com.airxiechao.axcboot.communication.rest.annotation.*;
 import com.airxiechao.axcboot.communication.rest.healthcheck.HealthCheckRestHandler;
 import com.airxiechao.axcboot.communication.rest.aspect.PinHandler;
+import com.airxiechao.axcboot.communication.rest.resolver.IParamResolver;
 import com.airxiechao.axcboot.communication.rest.security.*;
 import com.airxiechao.axcboot.communication.rest.util.RestUtil;
 import com.airxiechao.axcboot.communication.websocket.annotation.WsEndpoint;
@@ -65,6 +66,7 @@ public class RestServer {
     protected int port;
     protected String basePath;
     protected IAuthTokenChecker authTokenChecker;
+    protected IParamResolver paramResolver;
     protected Undertow server;
     protected RoutingHandler router = routing();
     protected PathHandler pather = path();
@@ -86,7 +88,19 @@ public class RestServer {
             String ip, int port, String basePath,
             KeyManagerFactory sslKeyManagerFactory,
             Consumer<Undertow.Builder> option,
-            IAuthTokenChecker authTokenChecker){
+            IAuthTokenChecker authTokenChecker,
+            IParamResolver paramResolver
+    ){
+        this.paramResolver = paramResolver;
+        return this.config(ip, port, basePath, sslKeyManagerFactory, option, authTokenChecker);
+    }
+
+    public RestServer config(
+            String ip, int port, String basePath,
+            KeyManagerFactory sslKeyManagerFactory,
+            Consumer<Undertow.Builder> option,
+            IAuthTokenChecker authTokenChecker
+    ){
         this.ip = ip;
         this.port = port;
         this.authTokenChecker = authTokenChecker;
@@ -285,22 +299,36 @@ public class RestServer {
                     handleAspectBeforeInvoke(method, httpServerExchange, pinStore);
 
                     int methodParamCount = method.getParameterCount();
-                    String queryPath = httpServerExchange.getRequestPath();
+                    if(methodParamCount == 0 || methodParamCount > 2){
+                        throw new Exception("rest method parameter count error");
+                    }
 
                     Object invokeObj = null;
                     if(!Modifier.isStatic(method.getModifiers())){
-                        Constructor constructor = method.getDeclaringClass().getDeclaredConstructor();
-                        constructor.setAccessible(true);
-                        invokeObj = constructor.newInstance();
+                        try{
+                            Constructor constructor = method.getDeclaringClass().getDeclaredConstructor();
+                            constructor.setAccessible(true);
+                            invokeObj = constructor.newInstance();
+                        }catch (NoSuchMethodException e){
+                            Constructor constructor = method.getDeclaringClass().getDeclaredConstructor(HttpServerExchange.class);
+                            constructor.setAccessible(true);
+                            invokeObj = constructor.newInstance(httpServerExchange);
+                        }
+                    }
+
+                    // resolve param
+                    Object param;
+                    if(null != paramResolver){
+                        param = paramResolver.resolve(httpServerExchange, method);
+                    }else{
+                        param = httpServerExchange;
                     }
 
                     Object ret;
                     if(1 == methodParamCount){
-                        ret = method.invoke(invokeObj, httpServerExchange);
-                    }else if(2 == methodParamCount){
-                        ret = method.invoke(invokeObj, httpServerExchange, pinStore);
+                        ret = method.invoke(invokeObj, param);
                     }else{
-                        throw new Exception("rest method parameter count error");
+                        ret = method.invoke(invokeObj, param, pinStore);
                     }
 
                     if(null != ret){
