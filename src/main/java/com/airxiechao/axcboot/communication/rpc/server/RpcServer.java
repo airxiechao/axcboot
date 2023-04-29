@@ -526,6 +526,12 @@ public class RpcServer {
             if(message.isResponse()){
                 this.handleResponseMessage(ctx, message);
             }else{
+                if(verboseLog){
+                    logger.info("rpc server executor [pool:{}, active:{}, core:{}, max:{}, queue:{}]",
+                            executor.getPoolSize(), executor.getActiveCount(), executor.getCorePoolSize(), executor.getMaximumPoolSize(), executor.getQueue().size());
+                    logAccess(ctx, message);
+                }
+
                 this.executor.execute(() -> {
                     this.handleServiceMessage(ctx, message);
                 });
@@ -585,11 +591,6 @@ public class RpcServer {
          * @param message
          */
         private void handleServiceMessage(ChannelHandlerContext ctx, RpcMessage message){
-
-            if(verboseLog){
-                logAccess(ctx, message);
-            }
-
             IRpcMessageHandler handler = null;
             if(null != message.getType()){
                 handler = serviceHandlers.get(message.getType());

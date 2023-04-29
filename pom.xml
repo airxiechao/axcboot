@@ -6,7 +6,7 @@
 
     <groupId>io.github.airxiechao</groupId>
     <artifactId>axcboot</artifactId>
-    <version>0.40</version>
+    <version>0.41</version>
 
     <name>axcboot</name>
     <url>https://github.com/airxiechao/axcboot</url>
@@ -170,6 +170,16 @@
             <artifactId>minio</artifactId>
             <version>8.3.6</version>
             <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.hibernate.validator</groupId>
+            <artifactId>hibernate-validator</artifactId>
+            <version>8.0.0.Final</version>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.expressly</groupId>
+            <artifactId>expressly</artifactId>
+            <version>5.0.0</version>
         </dependency>
 
         <dependency>

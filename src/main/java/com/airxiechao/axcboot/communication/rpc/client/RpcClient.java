@@ -5,7 +5,6 @@ import com.airxiechao.axcboot.communication.common.Response;
 import com.airxiechao.axcboot.communication.common.annotation.Query;
 import com.airxiechao.axcboot.communication.common.security.IAuthTokenChecker;
 import com.airxiechao.axcboot.communication.rpc.common.*;
-import com.airxiechao.axcboot.communication.rpc.server.RpcServer;
 import com.airxiechao.axcboot.communication.rpc.util.RpcUtil;
 import com.airxiechao.axcboot.util.AnnotationUtil;
 import com.alibaba.fastjson.JSON;
@@ -525,7 +524,7 @@ public class RpcClient {
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) throws Exception {
-            closeConection();
+            closeConnection();
 
             runDisconnectListener(ctx, null);
 
@@ -650,7 +649,7 @@ public class RpcClient {
         /**
          * 关闭连接
          */
-        public void closeConection() {
+        public void closeConnection() {
             pendingRequests.forEach((__, future) -> {
                 future.fail(new Exception("rpc-client-["+name+"] connection not active error"));
             });
@@ -669,7 +668,7 @@ public class RpcClient {
          * 关闭
          */
         public void closeGracefully() {
-            closeConection();
+            closeConnection();
 
             this.executor.shutdown();
             try {
