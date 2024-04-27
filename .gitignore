@@ -16,4 +16,5 @@ logs
 .idea
 *.iml
 temp/
+tmp/
 .VSCodeCounter

@@ -4,9 +4,9 @@ import com.airxiechao.axcboot.storage.annotation.Table;
 import com.airxiechao.axcboot.storage.db.sql.model.SqlParams;
 import com.airxiechao.axcboot.storage.fs.IFs;
 import com.airxiechao.axcboot.storage.fs.JavaResourceFs;
+import com.airxiechao.axcboot.util.StreamUtil;
 import com.airxiechao.axcboot.util.StringUtil;
 import com.airxiechao.axcboot.util.ModelUtil;
-import com.alibaba.fastjson.JSON;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.apache.ibatis.session.SqlSessionFactoryBuilder;
@@ -19,8 +19,10 @@ import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,32 +34,42 @@ public class DbManager {
 
     private static final String DEFAULT_DATASOURCE = "default";
 
-    private IFs configFs;
-    private String configFilePath;
     private Map<String, SqlSessionFactory> sqlSessionFactoryMap = new HashMap<>();
 
     public DbManager(){
         this(new JavaResourceFs(), "mybatis.xml");
     }
 
-    public DbManager(IFs configFs, String configFilePath) {
-        this.configFs = configFs;
-        this.configFilePath = configFilePath;
-
-        config();
+    public DbManager(String configContent){
+        try {
+            config(configContent);
+        } catch (Exception e){
+            logger.error("load db config error.", configContent, e);
+            throw new RuntimeException(e);
+        }
     }
 
-    private void config() {
-        List<String> envIds;
+    public DbManager(IFs configFs, String configFilePath) {
         try (InputStream inputStream = configFs.getInputStream(configFilePath)){
+            String content = StreamUtil.readString(inputStream, StandardCharsets.UTF_8);
+            config(content);
+        } catch (Exception e){
+            logger.error("load db config [{}] error.", configFilePath, e);
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void config(String content) {
+        List<String> envIds;
+        try (InputStream inputStream = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))){
             envIds = parseEnvironmentIds(inputStream);
         }catch (Exception e){
-            logger.error("db manager init environment [{}] error.", configFilePath, e);
+            logger.error("db manager init environment error.", e);
             throw new RuntimeException(e);
         }
 
         // default datasource
-        try (InputStream inputStream = configFs.getInputStream(configFilePath)){
+        try (InputStream inputStream = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))){
             SqlSessionFactory defaultSqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream);
             defaultSqlSessionFactory.getConfiguration().addMapper(DbMapper.class);
             sqlSessionFactoryMap.put(DEFAULT_DATASOURCE, defaultSqlSessionFactory);
@@ -68,7 +80,7 @@ public class DbManager {
 
         // named datasource
         for(String envId : envIds){
-            try (InputStream inputStream = configFs.getInputStream(configFilePath)){
+            try (InputStream inputStream = new ByteArrayInputStream(content.getBytes(StandardCharsets.UTF_8))){
                 SqlSessionFactory sqlSessionFactory = new SqlSessionFactoryBuilder().build(inputStream, envId);
                 sqlSessionFactory.getConfiguration().addMapper(DbMapper.class);
                 sqlSessionFactoryMap.put(envId, sqlSessionFactory);

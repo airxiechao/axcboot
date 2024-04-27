@@ -6,7 +6,7 @@
 
     <groupId>io.github.airxiechao</groupId>
     <artifactId>axcboot</artifactId>
-    <version>0.41</version>
+    <version>0.42-SNAPSHOT</version>
 
     <name>axcboot</name>
     <url>https://github.com/airxiechao/axcboot</url>
@@ -172,6 +172,12 @@
             <optional>true</optional>
         </dependency>
         <dependency>
+            <groupId>com.influxdb</groupId>
+            <artifactId>influxdb-client-java</artifactId>
+            <version>6.6.0</version>
+            <optional>true</optional>
+        </dependency>
+        <dependency>
             <groupId>org.hibernate.validator</groupId>
             <artifactId>hibernate-validator</artifactId>
             <version>8.0.0.Final</version>
@@ -180,6 +186,26 @@
             <groupId>org.glassfish.expressly</groupId>
             <artifactId>expressly</artifactId>
             <version>5.0.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.lucene</groupId>
+            <artifactId>lucene-core</artifactId>
+            <version>9.6.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.lucene</groupId>
+            <artifactId>lucene-queryparser</artifactId>
+            <version>9.6.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.lucene</groupId>
+            <artifactId>lucene-analyzers-smartcn</artifactId>
+            <version>8.11.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.github.spullara.mustache.java</groupId>
+            <artifactId>compiler</artifactId>
+            <version>0.9.10</version>
         </dependency>
 
         <dependency>

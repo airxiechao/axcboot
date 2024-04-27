@@ -166,7 +166,7 @@ public class DbUtil {
         if(dropIfExists){
             pwTable.println(String.format("DROP TABLE IF EXISTS `%s`;", tableName));
         }
-        pwTable.println(String.format("CREATE TABLE `%s`  (", tableName));
+        pwTable.println(String.format("CREATE TABLE IF NOT EXISTS `%s` (", tableName));
 
         // ddl column
 

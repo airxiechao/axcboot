@@ -72,7 +72,7 @@ public abstract class AbstractRestClient {
 
                 return resp;
             }catch (Exception e){
-                logger.error("rest client error", e);
+                logger.error("rest client error: {}", e.getMessage());
                 return new Response().error(e.getMessage());
             }
         });

@@ -211,6 +211,10 @@ public class RestServer {
     }
 
     public RestServer registerConsul(int ttl, String namePrefix){
+        return registerConsul("localhost", 8500, ttl, namePrefix);
+    }
+
+    public RestServer registerConsul(String agentHost, int agentPort, int ttl, String namePrefix){
         this.registerHandler(HealthCheckRestHandler.class);
 
         logger.info("register consul service [{}]", this.name);
@@ -218,7 +222,7 @@ public class RestServer {
         consulRegisterScheduleTask.schedulePeriodAfter(0, 1, TimeUnit.MINUTES, () -> {
             try{
                 // register to consul
-                ConsulClient client = new ConsulClient("localhost");
+                ConsulClient client = new ConsulClient(agentHost, agentPort);
 
                 NewService newService = new NewService();
                 newService.setName(namePrefix+this.name);

@@ -1,24 +1,26 @@
 package com.airxiechao.axcboot.util.os;
 
+import com.airxiechao.axcboot.util.StringUtil;
+
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 
+import static com.airxiechao.axcboot.util.CommandLineUtil.getCommandOutputLines;
+
 public class WindowsServiceUtil {
 
     public static List<ServiceInfo> listService() throws Exception {
-        Process process = Runtime.getRuntime().exec("powershell -command \"Get-Service | Select Status, Name | format-table -wrap\"");
-        BufferedReader br = new BufferedReader(new InputStreamReader(process.getInputStream()));
+        List<String> lines = getCommandOutputLines("powershell -command \"Get-Service | Select Status, Name | format-table -wrap\"");
 
         List<ServiceInfo> serviceInfoList = new ArrayList<>();
         Boolean running = null;
         StringBuilder sb = new StringBuilder();
 
-        String line;
         int in = 0;
         int no = 0;
-        while ((line = br.readLine()) != null) {
+        for (String line : lines) {
             no++;
 
             if(no == 2){
@@ -51,5 +53,22 @@ public class WindowsServiceUtil {
         }
 
         return serviceInfoList;
+    }
+
+    public static Long getServicePid(String serviceName) throws Exception {
+        List<String> lines = getCommandOutputLines(String.format("powershell -command \"tasklist /fi 'SERVICES eq %s' /fo csv | convertfrom-csv\"", serviceName));
+
+        String strPid = null;
+        for (String line : lines) {
+            if(line.startsWith("PID")){
+                strPid = line.substring(line.indexOf(":")+1).strip();
+            }
+        }
+
+        if(StringUtil.isBlank(strPid)){
+            return null;
+        }else{
+            return Long.valueOf(strPid);
+        }
     }
 }

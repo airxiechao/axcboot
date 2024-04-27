@@ -332,7 +332,7 @@ public class RpcServer {
             String clientName = router.getClientByContext(ctx);
             String name = (String)payload.get("name");
 
-            logger.info("rpc-server-[{}] receives heartbeat from rpc-client-[{}, {}]", this.name, name, clientName);
+            logger.debug("rpc-server-[{}] receives heartbeat from rpc-client-[{}, {}]", this.name, name, clientName);
 
             // 如果已经存在相同名称的其他客户端，则断开连接
             router.updateOrCloseRpcContext(clientName, ctx);

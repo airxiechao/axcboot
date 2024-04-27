@@ -2,8 +2,6 @@ package com.airxiechao.axcboot.storage.db.mongodb;
 
 import com.airxiechao.axcboot.storage.db.mongodb.annotation.MongoDbCollection;
 import com.airxiechao.axcboot.util.AnnotationUtil;
-import com.airxiechao.axcboot.util.ModelUtil;
-import com.airxiechao.axcboot.util.StringUtil;
 import com.mongodb.ConnectionString;
 import com.mongodb.MongoClientSettings;
 import com.mongodb.client.MongoClient;
@@ -21,7 +19,7 @@ public class MongoDbManager {
     private static final CodecRegistry pojoCodecRegistry = fromRegistries(MongoClientSettings.getDefaultCodecRegistry(),
             fromProviders(PojoCodecProvider.builder().automatic(true).build()));
 
-    private MongoClient mongoClient;
+    private MongoClient client;
     private String database;
 
     public MongoDbManager(String host, Integer port, String username, String password, String database) {
@@ -35,12 +33,16 @@ public class MongoDbManager {
                 .codecRegistry(pojoCodecRegistry)
                 .build();
 
-        this.mongoClient = MongoClients.create(settings);
+        this.client = MongoClients.create(settings);
         this.database = database;
     }
 
+    public MongoClient getClient() {
+        return client;
+    }
+
     public MongoDatabase getDatabase(){
-        return mongoClient.getDatabase(this.database);
+        return client.getDatabase(this.database);
     }
 
     public <T> MongoCollection<T> getCollection(Class<T> cls){

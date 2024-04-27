@@ -629,7 +629,54 @@ scheduleTask.shceduleEveryPeriod(1, TimeUnit.SECONDS, ()->{
 });
 ```
 
-## Util
+## Search 检索
+```java
+ITextIndex textIndex = new LuceneTextIndex(Path.of("tmp", "test-index"));
+textIndex.destroy();
+
+textIndex.add("1", new Doc("你好，今天天气很好, how are you"), false);
+textIndex.add("2", new Doc("你好，昨天天气很好"), false);
+textIndex.add("3", new Doc("你好，明天天气很好"), false);
+textIndex.commit();
+
+Map<String, String> terms = new HashMap<>();
+Map<String, String> matches = new HashMap<>();
+matches.put("text", "明天");
+List<String> list = textIndex.query(terms, matches, 1, 10);
+for (int i = 0; i < list.size(); i++) {
+    String id = list.get(i);
+    System.out.println((i+1) + ". [" + id + "]");
+}
+
+textIndex.update("2", new Doc("你好，明天天气不好, how good you are"), true);
+
+list = textIndex.query(terms, matches, 1, 10);
+for (int i = 0; i < list.size(); i++) {
+    String id = list.get(i);
+    System.out.println((i+1) + ". [" + id + "]");
+}
+
+textIndex.close();
+        
+class Doc {
+    @IndexField(isText = true)
+    private String text;
+
+    public Doc(String text) {
+        this.text = text;
+    }
+
+    public String getText() {
+        return text;
+    }
+
+    public void setText(String text) {
+        this.text = text;
+    }
+}
+```
+
+## Util 其他工具
 
 - crypto des加解密
 
